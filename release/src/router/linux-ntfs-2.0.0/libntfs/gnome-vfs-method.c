@@ -31,10 +31,9 @@
 
 #include "gnome-vfs-method.h"	/* self */
 #include <libgnomevfs/gnome-vfs-method.h>
-#include <glib.h>
-//#include <glib/gmessages.h>
+#include <glib/gmessages.h>
 #include "gnome-vfs-module.h"
-//#include <glib/ghash.h>
+#include <glib/ghash.h>
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif

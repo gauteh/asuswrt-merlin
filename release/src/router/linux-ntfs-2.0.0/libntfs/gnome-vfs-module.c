@@ -25,9 +25,8 @@
 
 #include "gnome-vfs-method.h"
 #include <libgnomevfs/gnome-vfs-module.h>
-//#include <glib/gmessages.h>
-//#include <glib/gutils.h>	/* for g_atexit() */
-#include <glib.h>
+#include <glib/gmessages.h>
+#include <glib/gutils.h>	/* for g_atexit() */
 
 static void vfs_module_shutdown_atexit(void);
 
