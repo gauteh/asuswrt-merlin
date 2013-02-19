@@ -25,30 +25,29 @@
 
 //	#define DEBUG_TIMING
 
-void notify_nas(const char *ifname);
-
 static int security_on(int idx, int unit, int subunit, void *param)
 {
 	return nvram_get_int(wl_nvname("radio", unit, 0)) && (!nvram_match(wl_nvname("security_mode", unit, subunit), "disabled"));
 }
-
+#ifdef REMOVE
 static int is_wds(int idx, int unit, int subunit, void *param)
 {
 	return nvram_get_int(wl_nvname("radio", unit, 0)) && nvram_get_int(wl_nvname("wds_enable", unit, subunit));
 }
-
+#endif
 #ifndef CONFIG_BCMWL5
 static int is_sta(int idx, int unit, int subunit, void *param)
 {
 	return nvram_match(wl_nvname("mode", unit, subunit), "sta");
 }
 #endif
-
+#ifdef REMOVE
 int wds_enable(void)
 {
 	return foreach_wif(1, NULL, is_wds);
 }
-
+#endif
+#ifdef CONFIG_BCMWL5
 int
 start_nas(void)
 {
@@ -95,7 +94,7 @@ stop_nas(void)
 
 	return ret;
 }
-
+#ifdef REMOVE
 void notify_nas(const char *ifname)
 {
 #ifdef DEBUG_TIMING
@@ -143,6 +142,8 @@ void notify_nas(const char *ifname)
 
 #endif /* CONFIG_BCMWL5 */
 }
+#endif
+#endif /* CONFIG_BCMWL5 */
 
 
 #ifdef RTCONFIG_WIRELESSREPEATER
@@ -237,7 +238,7 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 		// let ret be two value: connected, disconnected.
 		if(ret != WLC_STATE_CONNECTED)
 			ret = WLC_STATE_CONNECTING;
-		else if(nvram_match("lan_proto", "dhcp") && nvram_get_int("lan_state_t")!=LAN_STATE_CONNECTED) 
+		else if(nvram_match("lan_proto", "dhcp") && nvram_get_int("lan_state_t") != LAN_STATE_CONNECTED) 
 			ret = WLC_STATE_CONNECTING;
 
 		if(link_setup == 1){
@@ -263,32 +264,32 @@ _dprintf("Ready to disconnect...%d.\n", wlc_count);
 				}//*/
 			}
 
-			if(ret == WLC_STATE_CONNECTED)
-				wanduck_notify = NOTIFY_CONN;
-			else
-				wanduck_notify = NOTIFY_DISCONN;
+			if(link_setup){
+				if(ret == WLC_STATE_CONNECTED)
+					wanduck_notify = NOTIFY_CONN;
+				else
+					wanduck_notify = NOTIFY_DISCONN;
 
-			// notify the change to init.
-			if(ret == WLC_STATE_CONNECTED)
-				notify_rc_and_wait("restart_wlcmode 1");
-			else
-				notify_rc_and_wait("restart_wlcmode 0");
+				// notify the change to init.
+				if(ret == WLC_STATE_CONNECTED)
+					notify_rc_and_wait("restart_wlcmode 1");
+				else
+					notify_rc_and_wait("restart_wlcmode 0");
+			}
+
+#ifdef WEB_REDIRECT
+			if(wanduck_notify == NOTIFY_DISCONN){
+				wanduck_notify = NOTIFY_IDLE;
+
+				logmessage("notify wanduck", "wlc_state change!");
+				_dprintf("%s: notify wanduck: wlc_state=%d.\n", __FUNCTION__, ret);
+				// notify the change to wanduck.
+				kill_pidfile_s("/var/run/wanduck.pid", SIGUSR1);
+			}
+#endif
 
 			old_ret = ret;
 		}
-#ifdef WEB_REDIRECT
-		else if(wanduck_notify != NOTIFY_IDLE){
-			wanduck_notify = NOTIFY_IDLE;
-
-			if(ret == WLC_STATE_CONNECTED)
-				repeater_nat_setting();
-
-			logmessage("notify wanduck", "wlc state change!");
-			_dprintf("%s: notify wanduck: wlcstate=%d.\n", __FUNCTION__, ret);
-			// notify the change to wanduck.
-			kill_pidfile_s("/var/run/wanduck.pid", SIGUSR1);
-		}
-#endif
 
 		sleep(5);
 	}

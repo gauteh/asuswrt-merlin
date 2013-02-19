@@ -46,6 +46,8 @@ extern char wan6face[];
 #define is_phyconnected() (nvram_match("link_wan","1"))
 #endif
 
+#define NAT_RULES	"/tmp/nat_rules"
+
 #ifdef RTCONFIG_OLD_PARENTALCTRL
 int nvram_set_by_seq(char *name, unsigned int seq, char *value);
 char * nvram_get_by_seq(char *name, unsigned int seq);
@@ -75,7 +77,8 @@ int parental_ctrl(void);
 
 #ifdef RTCONFIG_USB_BECEEM
 #define BECEEM_DIR "/tmp/Beceem_firmware"
-#define BECEEM_CONF "/tmp/Beceem_firmware/wimaxd.conf"
+#define WIMAX_CONF "/tmp/wimax.conf"
+#define WIMAX_LOG "/tmp/wimax.log"
 #endif
 
 #define BOOT		0
@@ -197,6 +200,10 @@ extern void stop_dhcp6c(void);
 extern int ipv6aide_main(int argc, char *argv[]);
 #endif
 
+#ifdef RTCONFIG_WPS
+extern int wpsaide_main(int argc, char *argv[]);
+#endif
+
 // auth.c
 extern int start_auth(int unit, int wan_up);
 extern int stop_auth(int unit, int wan_down);
@@ -261,6 +268,8 @@ extern long fappend(FILE *out, const char *fname);
 extern long fappend_file(const char *path, const char *fname);
 extern void logmessage(char *logheader, char *fmt, ...);
 extern char *trim_r(char *str);
+extern void run_custom_script(char *name, char *args);
+extern void run_custom_script_blocking(char *name, char *args);
 
 
 // ssh.c
@@ -321,7 +330,7 @@ static inline void start_vpn_eas() { }
 #endif
 
 // wanduck.c
-extern int wanduck_main(int argc, const char *argv[]);
+extern int wanduck_main(int argc, char *argv[]);
 
 // tcpcheck.c
 extern int setupsocket(int sock);
@@ -337,12 +346,20 @@ extern int tcpcheck_main(int argc, const char *argv[]);
 #ifdef RTCONFIG_USB
 extern int asus_sd(const char *device_name, const char *action);
 extern int asus_lp(const char *device_name, const char *action);
+extern int asus_sg(const char *device_name, const char *action);
 extern int asus_sr(const char *device_name, const char *action);
 extern int asus_tty(const char *device_name, const char *action);
+extern int asus_usbbcm(const char *device_name, const char *action);
 extern int asus_usb_interface(const char *device_name, const char *action);
+#ifdef RTCONFIG_DISK_MONITOR
+extern int diskmon_main(int argc, const char *argv[]);
+extern void start_diskmon(void);
+extern void stop_diskmon(void);
+#endif
 #endif
 
 //service.c
+extern void setup_leds();
 extern void write_static_leases(char *file);
 #ifdef RTCONFIG_DNSMASQ
 extern void restart_dnsmasq();
@@ -363,6 +380,7 @@ extern void stop_ipv6(void);
 #ifdef CONFIG_BCMWL5
 extern void set_acs_ifnames();
 #endif
+extern int service_main(int argc, char *argv[]);
 
 #ifdef BTN_SETUP
 enum BTNSETUP_STATE

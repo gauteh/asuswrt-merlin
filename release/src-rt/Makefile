@@ -79,15 +79,16 @@ KERNEL_BINARY=$(LINUXDIR)/arch/mips/brcm-board/bcm947xx/compressed/zImage
 endif
 
 rt_ver:
-	echo '#ifndef RTVERSION' > router/shared/version.h
-	echo '#define RT_MAJOR_VERSION "$(KERNEL_VER)"' >> router/shared/version.h
-	echo '#define RT_MINOR_VERSION "$(FS_VER)"' >> router/shared/version.h
-	echo '#define RT_VERSION "$(KERNEL_VER).$(FS_VER)"' >> router/shared/version.h
-	echo '#define RT_SERIALNO "$(SERIALNO)"' >> router/shared/version.h
-	echo '#define RT_BUILD_NAME "$(BUILD_NAME)"' >> router/shared/version.h
-	echo '#define RT_BUILD_INFO "$(BUILD_TIME) $(BUILD_USER)@$(BUILD_INFO)"' >> router/shared/version.h
-	echo '#endif' >> router/shared/version.h
-	echo '$(BUILD_NAME)_$(KERNEL_VER).$(FS_VER) $(BUILD_TIME)' > router/shared/version
+	@echo '#ifndef RTVERSION' > router/shared/version.h
+	@echo '#define RT_MAJOR_VERSION "$(KERNEL_VER)"' >> router/shared/version.h
+	@echo '#define RT_MINOR_VERSION "$(FS_VER)"' >> router/shared/version.h
+	@echo '#define RT_VERSION "$(KERNEL_VER).$(FS_VER)"' >> router/shared/version.h
+	@echo '#define RT_SERIALNO "$(SERIALNO)"' >> router/shared/version.h
+	@echo '#define RT_EXTENDNO "$(EXTENDNO)"' >> router/shared/version.h
+	@echo '#define RT_BUILD_NAME "$(BUILD_NAME)"' >> router/shared/version.h
+	@echo '#define RT_BUILD_INFO "$(BUILD_TIME) $(BUILD_USER)@$(BUILD_INFO)"' >> router/shared/version.h
+	@echo '#endif' >> router/shared/version.h
+	@echo '$(BUILD_NAME)_$(KERNEL_VER).$(FS_VER) $(BUILD_TIME)' > router/shared/version
 
 all: rt_ver
 	@echo ""
@@ -143,7 +144,7 @@ else
 	ctools/objcopy -O binary -R .reginfo -R .note -R .comment -R .mdebug -S $(LINUXDIR)/vmlinux ctools/piggy
 	ctools/lzma_4k e ctools/piggy  ctools/vmlinuz-lzma
 	ctools/mksquashfs router/mipsel-uclibc/target ctools/target.squashfs -noappend -all-root
-ifeq ($(BCMWL6),y)
+ifeq ($(BOOTLZMA),y)
 	ctools/trx -o image/linux-lzma.trx ctools/vmlinuz-lzma ctools/target.squashfs
 else
 	ctools/trx -o image/linux-lzma.trx lzma-loader/loader.gz ctools/vmlinuz-lzma ctools/target.squashfs
@@ -309,6 +310,10 @@ define RouterOptions
 		sed -i "/RTCONFIG_4M_SFP/d" $(1); \
 		echo "RTCONFIG_4M_SFP=y" >>$(1); \
 	fi; \
+	if [ "$(SFPRAM16M)" = "y" ]; then \
+		sed -i "/RTCONFIG_16M_RAM_SFP/d" $(1); \
+		echo "RTCONFIG_16M_RAM_SFP=y" >>$(1); \
+	fi; \
 	if [ "$(AUTODICT)" = "y" ]; then \
 		sed -i "/RTCONFIG_AUTODICT/d" $(1); \
 		echo "RTCONFIG_AUTODICT=y" >>$(1); \
@@ -367,6 +372,10 @@ define RouterOptions
 			echo "RTCONFIG_NTFS=y" >>$(1); \
 			echo "RTCONFIG_NTFS3G=y" >>$(1); \
 		fi; \
+		if [ "$(DISK_MONITOR)" = "y" ]; then \
+			sed -i "/RTCONFIG_DISK_MONITOR/d" $(1); \
+			echo "RTCONFIG_DISK_MONITOR=y" >>$(1); \
+		fi; \
 		if [ "$(MEDIASRV)" = "y" ]; then \
 			sed -i "/RTCONFIG_MEDIA_SERVER/d" $(1); \
 			echo "RTCONFIG_MEDIA_SERVER=y" >>$(1); \
@@ -407,6 +416,10 @@ define RouterOptions
 		if [ "$(WEBDAV)" = "y" ]; then \
 			sed -i "/RTCONFIG_USB_WEBDAV/d" $(1); \
 			echo "RTCONFIG_USB_WEBDAV=y" >>$(1); \
+		fi; \
+		if [ "$(NFS)" = "y" ]; then \
+			sed -i "/RTCONFIG_NFS/d" $(1); \
+			echo "RTCONFIG_NFS=y" >>$(1); \
 		fi; \
 	else \
 		sed -i "/RTCONFIG_USB\b/d" $(1); \
@@ -486,7 +499,11 @@ define RouterOptions
 		sed -i "/RTCONFIG_NVRAM_64K/d" $(1); \
 		echo "RTCONFIG_NVRAM_64K=y" >>$(1); \
 	fi; \
-	)
+        if [ "$(DUAL_TRX)" = "y" ]; then \
+                sed -i "/RTCONFIG_DUAL_TRX/d" $(1); \
+                echo "RTCONFIG_DUAL_TRX=y" >>$(1); \
+        fi; \
+        )
 	$(call platformRouterOptions, $(1))
 endef
 
@@ -539,13 +556,17 @@ define BusyboxOptions
 		fi; \
 	fi; \
 	if [ "$(USB)" = "USB" ]; then \
+		if [ "$(NFS)" = "y" ]; then \
+			sed -i "/CONFIG_FEATURE_MOUNT_NFS/d" $(1); \
+	                echo "CONFIG_FEATURE_MOUNT_NFS=y" >>$(1); \
+		fi; \
 		if [ "$(USBEXTRAS)" = "y" ]; then \
 			sed -i "/CONFIG_E2FSCK/d" $(1); \
-			echo "CONFIG_E2FSCK=y" >>$(1); \
+			echo "CONFIG_E2FSCK=n" >>$(1); \
 			sed -i "/CONFIG_FSCK_MINIX/d" $(1); \
-			echo "CONFIG_FSCK_MINIX=y" >>$(1); \
+			echo "CONFIG_FSCK_MINIX=n" >>$(1); \
 			sed -i "/CONFIG_MKE2FS/d" $(1); \
-			echo "CONFIG_MKE2FS=y" >>$(1); \
+			echo "CONFIG_MKE2FS=n" >>$(1); \
 			sed -i "/CONFIG_FDISK/d" $(1); \
 			echo "CONFIG_FDISK=y" >>$(1); \
 			sed -i "/CONFIG_FEATURE_FDISK_WRITABLE/d" $(1); \
@@ -637,14 +658,35 @@ define BusyboxOptions
 			sed -i "/CONFIG_FEATURE_LS_COLOR\b/d" $(1); \
 			echo "# CONFIG_FEATURE_LS_COLOR is not set" >>$(1); \
 			if [ "$(SFP4M)" = "y" ]; then \
-				sed -i "/CONFIG_WGET/d" $(1); \
-				echo "# CONFIG_WGET is not set" >>$(1); \
-				sed -i "/CONFIG_FEATURE_WGET_AUTHENTICATION/d" $(1); \
-				echo "# CONFIG_FEATURE_WGET_AUTHENTICATION is not set" >>$(1); \
-				sed -i "/CONFIG_FEATURE_WGET_LONG_OPTIONS/d" $(1); \
-				echo "# CONFIG_FEATURE_WGET_LONG_OPTIONS is not set" >>$(1); \
-				sed -i "/CONFIG_FEATURE_WGET_TIMEOUT/d" $(1); \
-				echo "# CONFIG_FEATURE_WGET_TIMEOUT is not set" >>$(1); \
+				sed -i "/CONFIG_TAR/d" $(1); \
+				echo "# CONFIG_TAR is not set" >>$(1); \
+				sed -i "/CONFIG_DD/d" $(1); \
+				echo "# CONFIG_DD is not set" >>$(1); \
+				sed -i "/CONFIG_CUT/d" $(1); \
+				echo "# CONFIG_CUT is not set" >>$(1); \
+				sed -i "/CONFIG_SORT/d" $(1); \
+				echo "# CONFIG_SORT is not set" >>$(1); \
+				sed -i "/CONFIG_DMESG/d" $(1); \
+				echo "# CONFIG_DMESG is not set" >>$(1); \
+				sed -i "/CONFIG_CROND/d" $(1); \
+				echo "# CONFIG_CROND is not set" >>$(1); \
+				sed -i "/CONFIG_EXPR_MATH_SUPPORT_64/d" $(1); \
+				echo "# CONFIG_EXPR_MATH_SUPPORT_64 is not set" >>$(1); \
+				sed -i "/CONFIG_HEAD/d" $(1); \
+				echo "# CONFIG_HEAD is not set" >>$(1); \
+				sed -i "/CONFIG_MD5SUM/d" $(1); \
+				echo "# CONFIG_MD5SUM is not set" >>$(1); \
+				sed -i "/CONFIG_TAIL/d" $(1); \
+				echo "# CONFIG_TAIL is not set" >>$(1); \
+				sed -i "/CONFIG_AWK/d" $(1); \
+				echo "# CONFIG_AWK is not set" >>$(1); \
+				sed -i "/CONFIG_WC/d" $(1); \
+				echo "# CONFIG_WC is not set" >>$(1); \
+				sed -i "/CONFIG_VI/d" $(1); \
+				echo "# CONFIG_VI is not set" >>$(1); \
+				sed -i "/CONFIG_FIND/d" $(1); \
+				echo "# CONFIG_FIND is not set" >>$(1); \
+				echo "# CONFIG_FINDFS is not set" >>$(1); \
 			fi; \
 		else \
 			sed -i "/CONFIG_FEATURE_LS_COLOR\b/d" $(1); \
@@ -793,7 +835,13 @@ define KernelConfig
 		echo "CONFIG_N56U_SR2=y" >>$(1); \
 	else \
 		echo "# CONFIG_N56U_SR2 is not set" >>$(1); \
-	fi \
+	fi; \
+        sed -i "/CONFIG_DUAL_TRX/d" $(1); \
+        if [ "$(DUAL_TRX)" = "y" ]; then \
+                echo "CONFIG_DUAL_TRX=y" >>$(1); \
+        else \
+                echo "# CONFIG_DUAL_TRX is not set" >>$(1); \
+        fi; \
 	)
 	$(call platformKernelConfig, $(1))
 endef

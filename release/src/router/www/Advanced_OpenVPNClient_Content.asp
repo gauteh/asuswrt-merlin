@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -17,6 +17,8 @@
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" language="JavaScript" src="/detect.js"></script>
+<script type="text/javascript" language="JavaScript" src="/merlin.js"></script>
+
 <script type="text/javascript" src="/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script>
@@ -140,28 +142,6 @@ function update_visibility(){
 	showhide("client_cn_label", ((auth == "tls") && (tlsremote == 1)) ? 1 : 0);
 
 }
-
-
-function setRadioValue(theObj,theObjValue) {
-
-	for (var i=0; i<theObj.length; i++) {
-		if (theObj[i].value==theObjValue) {
-			theObj[i].checked = true;
-		}
-	}
-}
-
-
-function getRadioValue(theObj) {
-
-        for (var i=0; i<theObj.length; i++) {
-
-			if (theObj[i].checked)
-				return theObj[i].value;
-        }
-	return 0;
-}
-
 
 function applyRule(){
 
@@ -385,7 +365,7 @@ function change_vpn_unit(val){
 								<option value="-1" <% nvram_match("vpn_client_hmac","-1","selected"); %> >Disabled</option>
 								<option value="2" <% nvram_match("vpn_client_hmac","2","selected"); %> >Bi-directional</option>
 								<option value="0" <% nvram_match("vpn_client_hmac","0","selected"); %> >Incoming (0)</option>
-								<option value="1" <% nvram_match("vpn_client_hmac","1","selected"); %> >Incoming (1)</option>
+								<option value="1" <% nvram_match("vpn_client_hmac","1","selected"); %> >Outgoing (1)</option>
 							</select>
 			   			</td>
 					</tr>
@@ -488,14 +468,14 @@ function change_vpn_unit(val){
 					<tr id="client_reneg">
 						<th>TLS Renegotiation Time<br><i>(in seconds, -1 for default)</th>
 						<td>
-							<input type="text" maxlength="5" class="input_6_table" name="vpn_client_reneg" onKeyPress="return is_number(this,event);" onblur="validate_number_range(this, -1, 2147483647)" value="<% nvram_get("vpn_client_reneg"); %>">
+							<input type="text" maxlength="5" class="input_6_table" name="vpn_client_reneg" onblur="validate_range(this, -1, 2147483647)" value="<% nvram_get("vpn_client_reneg"); %>">
 						</td>
 					</tr>
 
 					<tr>
 						<th>Connection Retry<br><i>(in seconds, -1 for infinite)</th>
 						<td>
-							<input type="text" maxlength="5" class="input_6_table" name="vpn_client_retry" onKeyPress="return is_number(this,event);" onblur="validate_number_range(this, -1, 32767)" value="<% nvram_get("vpn_client_retry"); %>">
+							<input type="text" maxlength="5" class="input_6_table" name="vpn_client_retry" onblur="validate_range(this, -1, 32767)" value="<% nvram_get("vpn_client_retry"); %>">
 						</td>
 					</tr>
 
@@ -511,7 +491,7 @@ function change_vpn_unit(val){
 					<tr>
 						<th>Custom Configuration</th>
 						<td>
-							<textarea rows="8" class="textarea_ssh_table" name="vpn_client_custom" cols="55" maxlength="1024"><% nvram_clean_get("vpn_client_custom"); %></textarea>
+							<textarea rows="8" class="textarea_ssh_table" name="vpn_client_custom" cols="55" maxlength="15000"><% nvram_clean_get("vpn_client_custom"); %></textarea>
 						</td>
 					</tr>
 					</table>

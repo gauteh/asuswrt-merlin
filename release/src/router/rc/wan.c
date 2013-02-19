@@ -60,6 +60,10 @@
 #include <disk_io_tools.h>
 #endif
 
+#ifdef RTCONFIG_RALINK
+#include <ralink.h>
+#endif
+
 #define	MAX_MAC_NUM	16
 static int mac_num;
 static char mac_clone[MAX_MAC_NUM][18];
@@ -525,15 +529,61 @@ del_routes(char *prefix, char *var, char *ifname)
 	return 0;
 }
 
+#ifdef RTCONFIG_IPV6
+void
+stop_ecmh()
+{
+	if (pids("ecmh"))
+	{
+		killall_tk("ecmh");
+		sleep(1);
+	}
+}
+
+void
+start_ecmh(char *wan_ifname)
+{
+	int service = get_ipv6_service();
+
+	stop_ecmh();
+
+	if (!wan_ifname || (strlen(wan_ifname) <= 0))
+		return;
+
+	if (!nvram_match("mr_enable_x", "1"))
+		return;
+
+	switch (service) {
+	case IPV6_NATIVE:
+	case IPV6_NATIVE_DHCP:
+	case IPV6_MANUAL:
+		eval("/bin/ecmh", "-u", nvram_safe_get("http_username"), "-i", (char*)wan_ifname);
+		break;
+	}
+}
+#endif
+
+void
+stop_igmpproxy()
+{
+	if (pids("udpxy"))
+		killall_tk("udpxy");
+	if (pids("igmpproxy"))
+		killall_tk("igmpproxy");
+}
+
 void	// oleg patch , add
 start_igmpproxy(char *wan_ifname)
 {
-	static char *igmpproxy_conf = "/tmp/igmpproxy.conf";
 	FILE *fp;
+	static char *igmpproxy_conf = "/tmp/igmpproxy.conf";
 	char *altnet = nvram_safe_get("mr_altnet_x");
 
-	if (pids("udpxy")) killall_tk("udpxy");
-	if (pids("igmpproxy")) killall_tk("igmpproxy");
+#ifdef RTCONFIG_DSL /* Paul add 2012/9/21 for DSL model, start on interface br1. */
+	wan_ifname = "br1";
+#endif
+
+	stop_igmpproxy();
 
 	if (nvram_get_int("udpxy_enable_x")) {
 		_dprintf("start udpxy [%s]\n", wan_ifname);
@@ -746,7 +796,7 @@ void update_wan_state(char *prefix, int state, int reason)
 		unlink("/tmp/wanstatus.log");
 	}
         else if (state == WAN_STATE_CONNECTED) {
-                run_custom_script("wan-start");
+                run_custom_script("wan-start", NULL);
         }
 }
 
@@ -978,7 +1028,13 @@ start_wan_if(int unit)
 	int s;
 	struct ifreq ifr;
 	pid_t pid;
-	FILE *fp;
+	int port_num, got_modem;
+	char nvram_name[32];
+	char word[PATH_MAX], *next;
+#ifdef RTCONFIG_USB_BECEEM
+	int i;
+	char uvid[8], upid[8];
+#endif
 
 	_dprintf("%s(%d)\n", __FUNCTION__, unit);
 	snprintf(prefix, sizeof(prefix), "wan%d_", unit);
@@ -1043,6 +1099,7 @@ TRACE_PT("kill 3g's pppd.\n");
 			free(value);
 
 		char dhcp_pid_file[1024];
+		FILE *fp;
 
 		memset(dhcp_pid_file, 0, 1024);
 		sprintf(dhcp_pid_file, "/var/run/udhcpc%d.pid", unit);
@@ -1078,8 +1135,71 @@ TRACE_PT("kill 3g's pppd.\n");
 		// RNDIS interface: usbX, Beceem interface: usbbcm -> ethX.
 		else{
 			wan_ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-			if(strlen(wan_ifname) <= 0)
+			if(strlen(wan_ifname) <= 0){
+#ifdef RTCONFIG_USB_BECEEM
+				port_num = 1;
+				foreach(word, nvram_safe_get("ehci_ports"), next){
+					memset(nvram_name, 0, 32);
+					sprintf(nvram_name, "usb_path%d", port_num);
+
+					if(!strcmp(nvram_safe_get(nvram_name), "modem")){
+						memset(nvram_name, 0, 32);
+						sprintf(nvram_name, "usb_path%d_vid", port_num);
+						memset(uvid, 0, 8);
+						strncpy(uvid, nvram_safe_get(nvram_name), 8);
+						memset(nvram_name, 0, 32);
+						sprintf(nvram_name, "usb_path%d_pid", port_num);
+						memset(upid, 0, 8);
+						strncpy(upid, nvram_safe_get(nvram_name), 8);
+
+						if(is_samsung_dongle(1, uvid, upid)){
+							modprobe("tun");
+							sleep(1);
+
+							i = 0;
+							while(i < 3){
+								if(pids("madwimax")){
+									killall_tk("madwimax");
+									sleep(1);
+
+									++i;
+								}
+								else
+									break;
+							}
+
+							xstart("madwimax");
+						}
+						else if(is_gct_dongle(1, uvid, upid)){
+							modprobe("tun");
+							sleep(1);
+
+							i = 0;
+							while(i < 3){
+								if(pids("gctwimax")){
+									killall_tk("gctwimax");
+									sleep(1);
+
+									++i;
+								}
+								else
+									break;
+							}
+
+							write_gct_conf();
+
+							xstart("gctwimax", "-C", WIMAX_CONF);
+						}
+
+						break;
+					}
+
+					++port_num;
+				}
+#endif
+
 				return;
+			}
 
 			int i = 0;
 
@@ -1119,10 +1239,8 @@ TRACE_PT("kill 3g's pppd.\n");
 
 			// run as dhcp proto.
 			nvram_set(strcat_r(prefix, "proto", tmp), "dhcp");
-#ifndef RTCONFIG_DUALWAN
 			nvram_set(strcat_r(prefix, "dhcpenable_x", tmp), "1");
 			nvram_set(strcat_r(prefix, "dnsenable_x", tmp), "1");
-#endif
 
 			if(!strncmp(wan_ifname, "usb", 3)){ // RNDIS interface.
 				if(!nvram_match("stop_conn_3g", "1")){
@@ -1132,27 +1250,59 @@ TRACE_PT("kill 3g's pppd.\n");
 				else
 					TRACE_PT("stop_conn_3g was set.\n");
 			}
+			// Beceem dongle, ASIX USB to RJ45 converter.
+			else if(!strncmp(wan_ifname, "eth", 3)){
 #ifdef RTCONFIG_USB_BECEEM
-			else if(!strncmp(wan_ifname, "eth", 3)){ // Beceem interface.
 				write_beceem_conf(wan_ifname);
+#endif
 
 				if(!nvram_match("stop_conn_3g", "1")){
-					char buf[128];
+					got_modem = 0;
+					port_num = 1;
+					foreach(word, nvram_safe_get("ehci_ports"), next){
+						memset(nvram_name, 0, 32);
+						sprintf(nvram_name, "usb_path%d_act", port_num);
 
-					memset(buf, 0, 128);
-					sprintf(buf, "wimaxd -c %s", BECEEM_CONF);
-					_dprintf("%s: cmd=%s.\n", __FUNCTION__, buf);
-					system(buf);
-					sleep(3);
+						if(!strcmp(nvram_safe_get(nvram_name), wan_ifname)){
+							got_modem = 1;
 
-					_dprintf("%s: cmd=wimaxc search.\n", __FUNCTION__);
-					system("wimaxc search");
-					_dprintf("%s: sleep 10 seconds.\n", __FUNCTION__);
-					sleep(10);
+							start_udhcpc(wan_ifname, unit, &pid);
 
-					_dprintf("%s: cmd=wimaxc connect.\n", __FUNCTION__);
-					system("wimaxc connect");
+							break;
+						}
 
+						++port_num;
+					}
+
+#ifdef RTCONFIG_USB_BECEEM
+					if(!got_modem){
+						char buf[128];
+
+						memset(buf, 0, 128);
+						sprintf(buf, "wimaxd -c %s", WIMAX_CONF);
+						_dprintf("%s: cmd=%s.\n", __FUNCTION__, buf);
+						system(buf);
+						sleep(3);
+
+						_dprintf("%s: cmd=wimaxc search.\n", __FUNCTION__);
+						system("wimaxc search");
+						_dprintf("%s: sleep 10 seconds.\n", __FUNCTION__);
+						sleep(10);
+
+						_dprintf("%s: cmd=wimaxc connect.\n", __FUNCTION__);
+						system("wimaxc connect");
+					}
+#endif
+
+					update_wan_state(prefix, WAN_STATE_CONNECTING, 0);
+				}
+				else
+					TRACE_PT("stop_conn_3g was set.\n");
+			}
+#ifdef RTCONFIG_USB_BECEEM
+			else if(!strncmp(wan_ifname, "wimax", 5)){
+				if(!nvram_match("stop_conn_3g", "1")){
+					start_udhcpc(wan_ifname, unit, &pid);
 					update_wan_state(prefix, WAN_STATE_CONNECTING, 0);
 				}
 				else
@@ -1589,8 +1739,12 @@ _dprintf("%s: kill pppd(%d).\n", __FUNCTION__, pid);
 	if(unit == WAN_UNIT_SECOND)
 #endif
 	{
-		if(is_usb_modem_ready())
+		if(is_usb_modem_ready()){
 			system("wimaxc disconnect");
+
+			killall_tk("madwimax");
+			killall_tk("gctwimax");
+		}
 		system("killall wimaxd");
 		system("killall -SIGUSR1 wimaxd");
 	}
@@ -1640,24 +1794,31 @@ int update_resolvconf()
 	}
 #endif
 #endif
-	for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; unit++) {
-		char *wan_dns, *wan_xdns;
+
+	/* Add DNS from VPN clients, others if non-exclusive */
+#ifdef RTCONFIG_OPENVPN
+	if (!write_vpn_resolv(fp)) {
+#endif
+		for (unit = WAN_UNIT_FIRST; unit < WAN_UNIT_MAX; unit++) {
+			char *wan_dns, *wan_xdns;
 	
-	/* TODO: Skip unused wans
-		if (wan disabled or inactive)
-			continue */
+		/* TODO: Skip unused wans
+			if (wan disabled or inactive)
+				continue */
 
-		snprintf(prefix, sizeof(prefix), "wan%d_", unit);
-		wan_dns = nvram_safe_get(strcat_r(prefix, "dns", tmp));
-		wan_xdns = nvram_safe_get(strcat_r(prefix, "xdns", tmp));
+			snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+			wan_dns = nvram_safe_get(strcat_r(prefix, "dns", tmp));
+			wan_xdns = nvram_safe_get(strcat_r(prefix, "xdns", tmp));
 
-		if (strlen(wan_dns) <= 0 && strlen(wan_xdns) <= 0)
-			continue;
+			if (strlen(wan_dns) <= 0 && strlen(wan_xdns) <= 0)
+				continue;
 
-		foreach(word, (*wan_dns ? wan_dns : wan_xdns), next)
-			fprintf(fp, "nameserver %s\n", word);
+			foreach(word, (*wan_dns ? wan_dns : wan_xdns), next)
+				fprintf(fp, "nameserver %s\n", word);
+		}
+#if RTCONFIG_OPENVPN
 	}
-
+#endif
 	fclose(fp);
 
 	file_unlock(lock);
@@ -2143,10 +2304,13 @@ void wan6_up(const char *wan_ifname)
 
 	if (get_ipv6_service() != IPV6_NATIVE_DHCP)
 		start_radvd();
+
+	start_ecmh(wan_ifname);
 }
 
 void wan6_down(const char *wan_ifname)
 {
+	stop_ecmh();
 	stop_radvd();
 	stop_ipv6_tunnel();
 	stop_dhcp6c();
@@ -2333,13 +2497,10 @@ wan_up(char *wan_ifname)	// oleg patch, replace
 
 	if(wan_unit != wan_primary_ifunit())
 		return;
-
 	/* start multicast router when not VPN */
 	if (strcmp(wan_proto, "dhcp") == 0 ||
 	    strcmp(wan_proto, "static") == 0)
-	{
 		start_igmpproxy(wan_ifname);
-	}
 
 	//add_iQosRules(wan_ifname);
 	start_iQos();
@@ -2387,6 +2548,13 @@ _dprintf("%s(%s): unset xdns=%s.\n", __FUNCTION__, wan_ifname, nvram_safe_get("w
 	/* Stop post-authenticator */
 	stop_auth(wan_unit, 1);
 
+	wan_proto = nvram_safe_get(strcat_r(prefix, "proto", tmp));
+
+	/* stop multicast router when not VPN */
+	if (strcmp(wan_proto, "dhcp") == 0 ||
+	    strcmp(wan_proto, "static") == 0)
+		stop_igmpproxy();
+
 	/* Remove default route to gateway if specified */
 	if(wan_unit == wan_primary_ifunit())
 		route_del(wan_ifname, 0, "0.0.0.0", 
@@ -2410,8 +2578,6 @@ _dprintf("%s(%s): unset xdns=%s.\n", __FUNCTION__, wan_ifname, nvram_safe_get("w
 		strlen(nvram_safe_get(strcat_r(prefix, "xdns", tmp)))) 
 		nvram_unset(strcat_r(prefix, "dns", tmp));
 #endif
-
-	wan_proto = nvram_safe_get(strcat_r(prefix, "proto", tmp));
 
 	if (strcmp(wan_proto, "static") == 0)
 		ifconfig(wan_ifname, IFUP, NULL, NULL);

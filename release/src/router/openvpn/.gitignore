@@ -1,10 +1,10 @@
 stamp-h1
 config.log
-linux-ntfs-2.0.0
 *.o
 *.lo
+*.la
 .deps
-openvpn
+src/openvpn/.libs/*
 autom4te.cache
 service-win32/Makefile
 install-win32/Makefile
@@ -14,3 +14,8 @@ aclocal.m4
 Makefile
 configure.h
 autom4te.cache
+config.h
+libtool
+.libs
+src/openvpn/openvpn
+version.sh

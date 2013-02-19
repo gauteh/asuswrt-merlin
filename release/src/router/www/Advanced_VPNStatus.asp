@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -29,32 +29,35 @@ pptpdpid = '<% sysinfo("pid.pptpd"); %>';
 
 
 function initial(){
+	var state_r = " - Running";
+	var state_s = " - <span style=\"background-color: transparent; color: white;\">Stopped</span>";
+
 	show_menu();
 
 	if (server1pid > 0)
-		$("server1_Block_Running").innerHTML = " - Running";
+		$("server1_Block_Running").innerHTML = state_r;
 	else
-		$("server1_Block_Running").innerHTML = " - Stopped";
+		$("server1_Block_Running").innerHTML = state_s;
 
 	if (client1pid > 0)
-		$("client1_Block_Running").innerHTML = " - Running";
+		$("client1_Block_Running").innerHTML = state_r;
 	else
-		$("client1_Block_Running").innerHTML = " - Stopped";
+		$("client1_Block_Running").innerHTML = state_s;
 
 	if (server2pid > 0)
-		$("server2_Block_Running").innerHTML = " - Running";
+		$("server2_Block_Running").innerHTML = state_r;
 	else
-		$("server2_Block_Running").innerHTML = " - Stopped";
+		$("server2_Block_Running").innerHTML = state_s;
 
 	if (client2pid > 0)
-		$("client2_Block_Running").innerHTML = " - Running";
+		$("client2_Block_Running").innerHTML = state_r;
 	else
-		$("client2_Block_Running").innerHTML = " - Stopped";
+		$("client2_Block_Running").innerHTML = state_s;
 
 	if (pptpdpid > 0)
-		$("pptp_Block_Running").innerHTML = " - Running";
+		$("pptp_Block_Running").innerHTML = state_r;
 	else
-		$("pptp_Block_Running").innerHTML = " - Stopped";
+		$("pptp_Block_Running").innerHTML = state_s;
 
 	parseStatus(document.form.status_server1.value, "server1_Block");
 	parseStatus(document.form.status_client1.value, "client1_Block");
@@ -331,7 +334,7 @@ function parseStatus(text, block){
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>
 						<tr>
-							<td>OpenVPN Server 1<span id="server1_Block_Running" style="background: transparent; color: inherit;"></span><span id="server1_Block_UpdateTime" style="float: right; background: transparent; color: inherit;"></span></td>
+							<td><span id="server1_Block_UpdateTime" style="float: right; background: transparent;"></span>OpenVPN Server 1<span id="server1_Block_Running" style="background: transparent;"></span></td>
 						</tr>
 					</thead>
 					<tr>
@@ -347,7 +350,7 @@ function parseStatus(text, block){
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>
 						<tr>
-							<td>OpenVPN Server 2<span id="server2_Block_Running" style="background: transparent; color: inherit;"></span><span id="server2_Block_UpdateTime" style="float: right; background: transparent; color: inherit;"></span></td>
+							<td><span id="server2_Block_UpdateTime" style="float: right; background: transparent;"></span>OpenVPN Server 2<span id="server2_Block_Running" style="background: transparent;"></span></td>
 						</tr>
 					</thead>
 					<tr>
@@ -363,7 +366,7 @@ function parseStatus(text, block){
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>
 						<tr>
-							<td>OpenVPN Client 1<span id="client1_Block_Running" style="background: transparent; color: inherit;"></span><span id="client1_Block_UpdateTime" style="float: right; background: transparent; color: inherit;"></span></td>
+							<td><span id="client1_Block_UpdateTime" style="float: right; background: transparent;"></span>OpenVPN Client 1<span id="client1_Block_Running" style="background: transparent;"></span></td>
 						</tr>
 					</thead>
 					<tr>
@@ -379,7 +382,7 @@ function parseStatus(text, block){
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>
 						<tr>
-							<td>OpenVPN Client 2<span id="client2_Block_Running" style="background: transparent; color: inherit;"></span><span id="client2_Block_UpdateTime" style="float: right; background: transparent; color: inherit;"></span></td>
+							<td><span id="client2_Block_UpdateTime" style="float: right; background: transparent;"></span>OpenVPN Client 2<span id="client2_Block_Running" style="background: transparent;"></span></td>
 						</tr>
 					</thead>
 					<tr>
@@ -395,7 +398,7 @@ function parseStatus(text, block){
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 					<thead>
 						<tr>
-							<td>PPTP VPN Server<span id="pptp_Block_Running" style="background: transparent; color: inherit;"></span><span id="pptp_Block_UpdateTime" style="float: right; background: transparent; color: inherit;"></span></td>
+							<td><span id="pptp_Block_UpdateTime" style="float: right; background: transparent;"></span>PPTP VPN Server<span id="pptp_Block_Running" style="background: transparent;"></span></td>
 						</tr>
 					</thead>
 					<tr>

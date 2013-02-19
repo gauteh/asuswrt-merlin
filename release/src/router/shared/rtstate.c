@@ -13,15 +13,23 @@
 
 void add_rc_support(char *feature)
 {
-	char features[256];
+	char *rcsupport = nvram_safe_get("rc_support");
+	char *features;
 
-	strcpy(features, nvram_safe_get("rc_support"));
+	if (!(feature && *feature))
+		return;
 
-	if(strlen(features)==0) nvram_set("rc_support", feature);
-	else {
-		sprintf(features, "%s %s", features, feature);
+	if (*rcsupport) {
+		features = malloc(strlen(rcsupport) + strlen(feature) + 2);
+		if (features == NULL) {
+			_dprintf("add_rc_support fail\n");
+			return;
+		}
+		sprintf(features, "%s %s", rcsupport, feature);
 		nvram_set("rc_support", features);
-	}
+		free(features);
+	} else
+		nvram_set("rc_support", feature);
 }
 
 int get_wan_state(int unit)
@@ -191,7 +199,9 @@ int get_wanports_status(int wan_unit)
 	if(get_dualwan_by_unit(wan_unit) == WANS_DUALWAN_IF_DSL)
 #endif
 	{
-		if (nvram_match("dsltmp_adslsyncsts","up")) return 1;
+		/* Paul modify 2012/10/17, shouldn't check ADSL sync status, check WAN0 state instead. */
+		//if (nvram_match("dsltmp_adslsyncsts","up")) return 1;
+		if (nvram_match("wan0_state_t","2")) return 1;
 		return 0;
 	}
 #ifdef RTCONFIG_DUALWAN

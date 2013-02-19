@@ -61,7 +61,6 @@ ifeq ($(RTCONFIG_USB),y)
 OBJS += usb.o
 OBJS += usbled.o
 OBJS += usb_devices.o
-OBJS += diskutils.o
 endif
 
 ifeq ($(RTCONFIG_JFFS2),y)
@@ -111,6 +110,10 @@ OBJS += psta_monitor.o
 endif
 endif
 
+ifeq ($(RTCONFIG_WPS),y)
+OBJS += wpsaide.o
+endif
+
 ifeq ($(RTCONFIG_SHP),y)
 export CFLAGS += -DMEDIA_REVIEW
 endif
@@ -138,10 +141,10 @@ install: all
 	@cd $(INSTALLDIR)/sbin && ln -sf rc service
 	@cd $(INSTALLDIR)/sbin && ln -sf rc rcheck
 	@cd $(INSTALLDIR)/sbin && ln -sf rc radio
-	@cd $(INSTALLDIR)/sbin && ln -sf rc led
+	@cd $(INSTALLDIR)/sbin && ln -sf rc led_ctrl
 	@cd $(INSTALLDIR)/sbin && ln -sf rc reboot
 	@cd $(INSTALLDIR)/sbin && ln -sf rc halt
-	@cd $(INSTALLDIR)/sbin && ln -sf rc gpio
+#	@cd $(INSTALLDIR)/sbin && ln -sf rc gpio
 
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mtd-write
 	@cd $(INSTALLDIR)/sbin && ln -sf rc mtd-erase
@@ -162,11 +165,14 @@ endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc autodet
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ddns_updated
 
-	@cd $(INSTALLDIR)/sbin && ln -sf rc wldist
+#	@cd $(INSTALLDIR)/sbin && ln -sf rc wldist
 
 ifeq ($(RTCONFIG_IPV6),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc dhcp6c-state
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ipv6aide
+endif
+ifeq ($(RTCONFIG_WPS),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc wpsaide
 endif
 
 #	ifeq ($(RTCONFIG_HEARTBEAT),y)
@@ -201,6 +207,9 @@ ifeq ($(RTCONFIG_USB),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc asus_usbbcm
 	@cd $(INSTALLDIR)/sbin && ln -sf rc asus_usb_interface
 	@cd $(INSTALLDIR)/sbin && ln -sf rc ejusb
+ifeq ($(RTCONFIG_DISK_MONITOR),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc disk_monitor
+endif
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc run_app_script 
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_wireless

@@ -10,7 +10,7 @@ lemon_SOURCES=lemon.c
 
 lighttpd_angel_SOURCES=lighttpd-angel.c
 
-lighttpd_monitor_SOURCES=log.c buffer.c lighttpd-monitor.c
+lighttpd_monitor_SOURCES=log.c buffer.c lighttpd-monitor.c nvram_control.c
 
 lighttpd_arpping_SOURCES=log.c buffer.c arpping_thread.c nvram_control.c
 lighttpd_arpping_LDFLAGS= -lsmbclient
@@ -62,8 +62,9 @@ endif
 #20120613 Jerry add
 copy-prebuild:
 	if test -d '../prebuild' ; then \
-		cp ../prebuild/mod_smbdav.so .libs/mod_smbdav.so; \
-		cp ../prebuild/mod_aidisk_access.so .libs/mod_aidisk_access.so; \
+		cp ../prebuild/mod_smbdav.so.l .libs/mod_smbdav.so; \
+		cp ../prebuild/mod_aidisk_access.so.l .libs/mod_aidisk_access.so; \
+		cp ../prebuild/mod_sharelink.so.l .libs/mod_sharelink.so; \
 	fi
 
 BUILT_SOURCES = parsers versionstamp 

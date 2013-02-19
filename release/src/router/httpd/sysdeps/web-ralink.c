@@ -372,27 +372,6 @@ ralink_get_range_info(iwrange *	range, char* buffer, int length)
 #define RTPRIV_IOCTL_SHOW		SIOCIWFIRSTPRIV + 0x11
 #define RTPRIV_IOCTL_GET_MAC_TABLE	SIOCIWFIRSTPRIV + 0x0F
 
-int
-wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
-{
-	int ret = 0;
- 	int s;
-
-	/* open socket to kernel */
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("socket");
-		return errno;
-	}
-
-	/* do it */
-	strncpy(pwrq->ifr_name, ifname, IFNAMSIZ);
-	if ((ret = ioctl(s, cmd, pwrq)) < 0)
-		perror(pwrq->ifr_name);
-
-	/* cleanup */
-	close(s);
-	return ret;
-}
 
 char* GetBW(int BW)
 {
@@ -494,7 +473,7 @@ getRate_2g(MACHTTRANSMIT_SETTING_2G HTSetting)
 }
 
 int
-ej_wl_status(int eid, webs_t wp, int argc, char_t **argv)
+ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
 	int retval = 0;
 	int ii = 0;
@@ -513,13 +492,13 @@ ej_wl_status(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_status_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return ej_wl_status(eid, wp, argc, argv);
+	return ej_wl_status(eid, wp, argc, argv, 0);
 }
 
 int
 wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit, const char *ifname)
-{	int ret = 0;
-
+{
+	int ret = 0;
 	int channel;
 	struct iw_range	range;
 	double freq;
@@ -640,7 +619,6 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit, const char *ifn
 		return ret;
 
 	RT_802_11_MAC_TABLE* mp=(RT_802_11_MAC_TABLE*)wrq3.u.data.pointer;
-	RT_802_11_MAC_TABLE_2G* mp_2g=(RT_802_11_MAC_TABLE_2G*)wrq3.u.data.pointer;
 	int i;
 
 	ret+=websWrite(wp, "\nStations List			   \n");

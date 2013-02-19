@@ -28,7 +28,7 @@
 .top-messagebold {
 	font-family:Verdana;
 	font-size:11px;
-	color:#4b6688;
+	color:#FFF;
 	line-height:180%;
 	font-weight:bold;
 }
@@ -479,6 +479,7 @@
 	cursor:pointer;
 	outline: none; /* for Firefox */
  	hlbr:expression(this.onFocus=this.blur()); /* for IE */
+ 	white-space:normal;
 }
 .button_gen:hover{
 	font-weight: bolder;
@@ -1044,6 +1045,7 @@ p{margin-top:   0;margin-bottom:   0}
       padding: 5px 1px 5px 11px;
       height: 24px;
       line-height: 22px;
+			font-weight: bold;
     }
 .titlebtn:hover {
       background-position: right -34px;
@@ -1431,6 +1433,14 @@ padding-top:1px;
 	width:30px;
 	cursor: pointer;
 }
+.wifihwswstatuspartial{
+        background-image:url(/images/wifi_hw_sw.png);
+        background-repeat:no-repeat;    
+        background-position:2px -73px;
+        height:29px;
+        width:30px;
+        cursor: pointer;
+}
 .wifihwswstatusoff{
 	background-image:url(/images/wifi_hw_sw.png);
 	background-repeat:no-repeat;	
@@ -1668,6 +1678,7 @@ padding-top:1px;
 	margin-left:2px;
 	padding-left:0.4em;
 	width: 500px;
+	height:184px;
 	line-height:23px;    /*IE*/
 	font-size:12px;
 	font-family: Lucida Console;
@@ -1676,6 +1687,26 @@ padding-top:1px;
 	border-style:bevel;
 	color:#FFFFFF;
 }
+.traffictable th{
+	height:30px;
+	background-image: url(images/general_th.gif);
+}
+
+.traffictable th:hover{
+        cursor:pointer;                
+        text-decoration: underline;
+}
+
+.traffictable_footer td{
+	color: cyan;
+	background-color:#4d595d;
+}
+
+.traffictable_link:hover {
+	cursor:pointer;
+	text-decoration: underline;
+}
+
 .panel_folder{
 	font-family:Courier ;
 	width:500px;

@@ -106,7 +106,7 @@ bound(void)
 {
 	char *wan_ifname = safe_getenv("interface");
 	char *value;
-	char tmp[100], prefix[] = "wanXXXXXXXXXX_";
+	char tmp[100], tmp2[100], prefix[] = "wanXXXXXXXXXX_";
 	char wanprefix[] = "wanXXXXXXXXXX_";
 	char route[sizeof("255.255.255.255/255")];
 	int unit, ifunit;
@@ -132,10 +132,14 @@ bound(void)
 	if ((value = getenv("router"))) {
 		gateway = 1;
 		nvram_set(strcat_r(prefix, "gateway", tmp), trim_r(value));
+		memset(tmp2, 0, 100);
+		strcpy(tmp2, trim_r(value));
 	}
-	if ((value = getenv("dns")) &&
-	    nvram_match(strcat_r(wanprefix, "dnsenable_x", tmp), "1")) {
-		nvram_set(strcat_r(prefix, "dns", tmp), trim_r(value));
+	if(nvram_match(strcat_r(wanprefix, "dnsenable_x", tmp), "1")){
+		if((value = getenv("dns")))
+			nvram_set(strcat_r(prefix, "dns", tmp), trim_r(value));
+		else if(gateway) // ex: android phone. The gateway is the DNS server.
+			nvram_set(strcat_r(prefix, "dns", tmp), tmp2);
 	}
 	if ((value = getenv("wins")))
 		nvram_set(strcat_r(prefix, "wins", tmp), trim_r(value));
@@ -210,9 +214,11 @@ bound(void)
 
 	wan_up(wan_ifname);
 
-	logmessage("dhcp client", "bound %s via %s",
+	logmessage("dhcp client", "bound %s via %s during %d seconds.",
 		nvram_safe_get(strcat_r(prefix, "ipaddr", tmp)),
-		nvram_safe_get(strcat_r(prefix, "gateway", tmp)));
+		nvram_safe_get(strcat_r(prefix, "gateway", tmp)),
+		nvram_get_int(strcat_r(prefix, "lease", tmp))
+		);
 
 	_dprintf("udhcpc:: %s done\n", __FUNCTION__);
 	return 0;
@@ -316,6 +322,9 @@ int
 udhcpc_wan(int argc, char **argv)
 {
 	_dprintf("%s:: %s\n", __FUNCTION__, argv[1]);
+
+	run_custom_script("dhcpc-event", argv[1]);
+
 	if (!argv[1])
 		return EINVAL;
 	else if (strstr(argv[1], "deconfig"))
@@ -338,12 +347,15 @@ start_udhcpc(char *wan_ifname, int unit, pid_t *ppid)
 {
 	char tmp[100], prefix[] = "wanXXXXXXXXXX_";
 	char pid[sizeof("/var/run/udhcpcXXXXXXXXXX.pid")];
-	char clientid[sizeof("61:00") + (32+32+1)*2];
+	char clientid[sizeof("61:") + (32+32+1)*2];
 	char *value;
 	char *dhcp_argv[] = { "udhcpc",
 		"-i", wan_ifname,
 		"-p", (snprintf(pid, sizeof(pid), "/var/run/udhcpc%d.pid", unit), pid),
 		"-s", "/tmp/udhcpc",
+		"-t", "2",	/* Two DISC packets max */
+		"-T", "5",	/* 5 seconds between packets */
+		"-A", "120",	/* Wait 120 seconds before trying again */
 		NULL,		/* -b */
 		NULL, NULL,	/* -H wan_hostname */
 		NULL,		/* -Oroutes */
@@ -405,7 +417,7 @@ start_udhcpc(char *wan_ifname, int unit, pid_t *ppid)
 	value = nvram_safe_get(strcat_r(prefix,"dhcpc_options",tmp));
 	if (*value) {
 		char *ptr = clientid;
-		ptr += sprintf(ptr, "61:00");
+		ptr += sprintf(ptr, "61:");
 		while (*value && (ptr - clientid) < sizeof(clientid) - 2)
 			ptr += sprintf(ptr, "%02x", *value++);
 		dhcp_argv[index++] = "-x";
@@ -472,6 +484,9 @@ int
 zcip_wan(int argc, char **argv)
 {
 	_dprintf("%s:: %s\n", __FUNCTION__, argv[1]);
+
+        run_custom_script("zcip-event", argv[1]);
+
 	if (!argv[1])
 		return EINVAL;
 	else if (strstr(argv[1], "deconfig"))
@@ -520,10 +535,12 @@ deconfig_lan(void)
 	char *lan_ifname = safe_getenv("interface");
 
 	//ifconfig(lan_ifname, IFUP, "0.0.0.0", NULL);
-	ifconfig(lan_ifname, IFUP, 
-			nvram_safe_get("lan_ipaddr"),
-			nvram_safe_get("lan_netmask"));
-	
+_dprintf("%s: IFUP.\n", __FUNCTION__);
+	if(nvram_match("lan_proto", "static"))
+		ifconfig(lan_ifname, IFUP, nvram_safe_get("lan_ipaddr"), nvram_safe_get("lan_netmask"));
+	else
+		ifconfig(lan_ifname, IFUP, nvram_default_get("lan_ipaddr"), nvram_default_get("lan_netmask"));
+
 	expires_lan(lan_ifname, 0);
 
 	lan_down(lan_ifname);
@@ -543,7 +560,7 @@ bound_lan(void)
 {
 	char *lan_ifname = safe_getenv("interface");
 	char *value;
-	
+
 	if ((value = getenv("ip")))
 		nvram_set("lan_ipaddr", trim_r(value));
 	if ((value = getenv("subnet")))
@@ -556,6 +573,15 @@ bound_lan(void)
 	}
 	if ((value = getenv("dns")))
 		nvram_set("lan_dns", trim_r(value));
+
+_dprintf("%s: IFUP.\n", __FUNCTION__);
+#ifdef RTCONFIG_WIRELESSREPEATER
+	if(nvram_get_int("sw_mode") == SW_MODE_REPEATER && nvram_get_int("wlc_mode") == 0){
+		update_lan_state(LAN_STATE_CONNECTED, 0);
+		_dprintf("done\n");
+		return 0;
+	}
+#endif
 
 	ifconfig(lan_ifname, IFUP, nvram_safe_get("lan_ipaddr"),
 		nvram_safe_get("lan_netmask"));
@@ -586,6 +612,8 @@ renew_lan(void)
 int
 udhcpc_lan(int argc, char **argv)
 {
+        run_custom_script("dhcpc-event", argv[1]);
+
 	if (!argv[1])
 		return EINVAL;
 	else if (strstr(argv[1], "deconfig"))

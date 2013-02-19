@@ -43,6 +43,7 @@ wan_nat_x = '<% nvram_get("wan_nat_x"); %>';
 wan_proto = '<% nvram_get("wan_proto"); %>';
 
 var webs_state_update = '<% nvram_get("webs_state_update"); %>';
+var webs_state_upgrade = '<% nvram_get("webs_state_upgrade"); %>';
 var webs_state_error = '<% nvram_get("webs_state_error"); %>';
 var webs_state_info = '<% nvram_get("webs_state_info"); %>';
 
@@ -54,6 +55,7 @@ function initial(){
 		$("update").style.display = "none";
 	else if('<% nvram_get("webs_state_update"); %>' != '')
 		detect_firmware();
+	if ("<% nvram_get("jffs2_on"); %>" == "1") $("jffs_warning").style.display="";
 }
 
 var exist_firmver="<% nvram_get("firmver"); %>";
@@ -85,32 +87,25 @@ function detect_firmware(){
 	      					if(Latest_firm.length > 0 && Latest_buildno.length > 0){	//match model FW
       								current_firm = parseInt(exist_firmver.replace(/[.]/gi,""));
       								current_buildno = <% nvram_get("buildno"); %>;
-      								if(current_firm < Latest_firm){
+      								if((current_buildno < Latest_buildno) || 
+      									 (current_buildno == Latest_buildno && current_firm < Latest_firm))
+      								{
       										$('update_scan').style.display="none";
       										if(confirm("<#exist_new#>")){
       												document.start_update.action_mode.value="apply";
       												document.start_update.action_script.value="start_webs_upgrade";
-      												document.start_update.action_wait.value="300";
+      												document.start_update.action_wait.value="270";
 															document.start_update.submit();
 															return;
       										}
-      								}else if(current_firm == Latest_firm && current_buildno < Latest_buildno){
-      										$('update_scan').style.display="none";
-      										if(confirm("<#exist_new#>")){
-      												document.start_update.action_mode.value="apply";
-      												document.start_update.action_script.value="start_webs_upgrade";
-      												document.start_update.action_wait.value="300";
-															document.start_update.submit();
-															return;
-      										}
-
+      										
       								}else{
-      										var flag = getCookie("after_check");
-      										if(flag==1){
+      										//var flag = getCookie("after_check");
+      										//if(flag==1){
       							  				$('update_states').innerHTML="<#is_latest#>";
       												$('update_scan').style.display="none";
-      												setCookie("after_check", 0, 365);
-      										}
+      												//setCookie("after_check", 0, 365);
+      										//}
       								}
       						}
       						else{		//miss-match model FW
@@ -125,7 +120,7 @@ function detect_firmware(){
 }
 
 function detect_update(){
-	setCookie("after_check", 1, 365);
+	//setCookie("after_check", 1, 365);
   document.start_update.action_mode.value="apply";
   document.start_update.action_script.value="start_webs_update";
   document.start_update.action_wait.value="12";
@@ -189,7 +184,7 @@ function detect_httpd(){
     						$('loading_block1').style.display = "none";
     						$('loading_block2').style.display = "none";
     						$('loading_block3').style.display = "";
-    						$('loading_block3').innerHTML = "<div style='margin-left:15px;font-size:12pt;'><#Firm_reboot_manually#></div>";
+    						$('loading_block3').innerHTML = "<div><#Firm_reboot_manually#></div>";
     				}
     		},
 
@@ -200,6 +195,47 @@ function detect_httpd(){
   		});
 }
 
+var rebooting = 0;
+function isDownloading(){
+	$j.ajax({
+    		url: '/detect_firmware.asp',
+    		dataType: 'script',
+				timeout: 1500,
+    		error: function(xhr){
+					// start reboot.
+					if(rebooting > 20){
+						$("hiddenMask").style.visibility = "hidden";
+						showLoadingBar(180);
+    				setTimeout("location.href='index.asp';", 180000); // force to refresh
+					}
+					else
+						rebooting++
+    		},
+    		success: function(){
+					rebooting = 0;
+					if(webs_state_upgrade == 1 && webs_state_error == 1){
+						$("drword").innerHTML = "<#FIRM_fail_desc#>";
+						return false;
+					}
+					else if(webs_state_upgrade != 0 && webs_state_error == 0){
+						$("hiddenMask").style.visibility = "hidden";
+						showLoadingBar(270);
+						setTimeout("detect_httpd();", 272000);
+						return false;
+					}
+					else{
+    				setTimeout("isDownloading();", 2000);
+					}
+  			}
+  		});
+}
+
+function startDownloading(){
+	disableCheckChangedStatus();			
+	dr_advise();
+	$("drword").innerHTML = "&nbsp;&nbsp;&nbsp;Firmware downloading...";
+	isDownloading();
+}
 </script>
 </head>
 
@@ -216,7 +252,7 @@ function detect_httpd(){
 			<div id="proceeding_img"></div>
 		</div>
 		<div id="loading_block2" style="margin:5px auto; width:85%;"><#FIRM_ok_desc#></div>
-		<div id="loading_block3" style="width:100%;font-size:14pt;"></div>
+		<div id="loading_block3" style="margin:5px auto;width:85%; font-size:12pt;"></div>
 		</td>
 	</tr>
 </table>
@@ -225,15 +261,10 @@ function detect_httpd(){
 <div id="Loading" class="popup_bg"></div><!--for uniform show, useless but have exist-->
 
 <div id="hiddenMask" class="popup_bg">
-	<table cellpadding="5" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center">
+	<table cellpadding="5" cellspacing="0" id="dr_sweet_advise" class="dr_sweet_advise" align="center" style="height:100px;">
 		<tr>
 		<td>
-			<br/>
-			<div class="drword" id="drword" style="height:50px;">&nbsp;&nbsp;&nbsp;<#Main_alert_proceeding_desc1#>...
-			<br/>
-			<br/>
-	    </div>
-		  <!--div class="drImg"><img src="/images/DrsurfImg.gif"></div-->
+			<div class="drword" id="drword" style=""><#Main_alert_proceeding_desc1#>...</div>
 		</td>
 		</tr>
 	</table>
@@ -274,7 +305,8 @@ function detect_httpd(){
 		  <div>&nbsp;</div>
 		  <div class="formfonttitle"><#menu5_6_adv#> - <#menu5_6_3#></div>
 		  <div style="margin-left:5px;margin-top:10px;margin-bottom:10px"><img src="/images/New_ui/export/line_export.png"></div>
-		  <div class="formfontdesc"><#FW_desc1#></div>
+		  <div class="formfontdesc">Visit <a style="text-decoration: underline;" href="http://www.lostrealm.ca/asuswrt-merlin/" target="_blank">http://www.lostrealm.ca/asuswrt-merlin/<a> for the latest version.<br>
+		  For support related to the original firmware, visit <a style="text-decoration: underline;" href="http://support.asus.com/" target="_blank">http://support.asus.com</a></div>
 
 		<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
 			<tr>
@@ -319,6 +351,7 @@ function detect_httpd(){
 				<td colspan="2">
 				<strong><#FW_note#></strong>
 				<ol>
+					<li id="jffs_warning" style="display:none;"><span>WARNING: you have JFFS enabled.  Make sure you have a backup of its content, as upgrading your firmware MIGHT overwrite it!</span></li>
 					<li><#FW_n1#></li>
 					<li><#FW_n2#></li>
 				</ol>

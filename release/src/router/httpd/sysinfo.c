@@ -235,7 +235,21 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 				free(buffer);
 				unlink("/tmp/output.txt");
 			}
+		} else if(strcmp(type,"cfe_version") == 0 ) {
+			system("cat /dev/mtd0ro | grep bl_version >/tmp/output.txt");
+			char *buffer = read_whole_file("/tmp/output.txt");
 
+			if (buffer) {
+				tmp = strstr(buffer, "bl_version=");
+
+				if (tmp)
+					sscanf(tmp, "bl_version=%s", result);
+				else
+					strcpy(result,"Unknown");
+				free(buffer);
+
+				unlink("/tmp/output.txt");
+			}
 		} else if(strncmp(type,"pid",3) ==0 ) {
 			char service[32];
 			sscanf(type, "pid.%31s", service);
@@ -269,7 +283,23 @@ int ej_show_sysinfo(int eid, webs_t wp, int argc, char_t ** argv)
 					}
 				}
 			}
+		} else if(strcmp(type,"ethernet") == 0 ) {
+			int len, j;
 
+			system("/usr/sbin/robocfg showports >/tmp/output.txt");
+
+			char *buffer = read_whole_file("/tmp/output.txt");
+			if (buffer) {
+				len = strlen(buffer);
+
+				for (j=0; (j < len); j++) {
+					if (buffer[j] == '\n') buffer[j] = '>';
+				}
+				strncpy(result, buffer, sizeof result);
+
+				free(buffer);
+				unlink("/tmp/output.txt");
+			}
 		} else {
 			strcpy(result,"Not implemented");
 		}

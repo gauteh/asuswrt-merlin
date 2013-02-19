@@ -73,6 +73,7 @@ obj-y += ntpclient
 
 ifneq ($(RTCONFIG_4M_SFP),y)
 obj-y += rstats
+obj-y += cstats
 endif
 
 ifeq ($(RTCONFIG_RALINK),y)
@@ -83,7 +84,9 @@ endif
 
 # !!TB - updated Broadcom Wireless driver
 ifneq ($(RTCONFIG_RALINK),y)
+ifneq ($(RTCONFIG_BCMWL6),y)
 obj-y += et
+endif
 obj-y += wlconf
 obj-y += utils
 obj-y += nas
@@ -123,6 +126,9 @@ obj-$(RTCONFIG_USB_BECEEM) += zlib # for GCT WiMAX
 obj-$(RTCONFIG_USB_BECEEM) += gctwimax-0.0.3rc4 # for GCT WiMAX
 
 obj-y += libdisk
+obj-y += e2fsprogs
+obj-$(RTCONFIG_NFS) += nfs-utils
+obj-$(RTCONFIG_NFS) += portmap
 
 obj-y += dosfstools
 obj-$(RTCONFIG_NTFS) += linux-ntfs-2.0.0
@@ -164,6 +170,7 @@ obj-$(RTCONFIG_EBTABLES) += ebtables
 obj-$(RTCONFIG_IPV6) += libdaemon
 obj-$(RTCONFIG_IPV6) += radvd
 obj-$(RTCONFIG_IPV6) += dhcpv6
+obj-$(RTCONFIG_IPV6) += ecmh
 
 obj-$(RTCONFIG_MEDIA_SERVER) += zlib
 obj-$(RTCONFIG_MEDIA_SERVER) += sqlite
@@ -240,6 +247,7 @@ obj-y += ez-ipupdate
 # Merlin addons
 obj-y += wol
 obj-y += netstat-nat
+
 obj-clean := $(foreach obj, $(obj-y) $(obj-n) $(obj-), $(obj)-clean)
 obj-install := $(foreach obj,$(obj-y),$(obj)-install)
 
@@ -421,11 +429,11 @@ endif
 	@mv $(TARGETDIR)/lib/modules/*/kernel/fs/smbfs.*o $(PLATFORMDIR)/extras/ || true
 	@mv $(TARGETDIR)/lib/modules/*/kernel/fs/reiserfs.*o $(PLATFORMDIR)/extras/ || true
 	@mv $(TARGETDIR)/lib/modules/*/kernel/fs/hfsplus.*o $(PLATFORMDIR)/extras/ || true
-	@cp $(TARGETDIR)/lib/modules/*/kernel/fs/nfs.*o $(PLATFORMDIR)/extras/ || true
-	@cp $(TARGETDIR)/lib/modules/*/kernel/fs/nfsd.*o $(PLATFORMDIR)/extras/ || true
-	@cp $(TARGETDIR)/lib/modules/*/kernel/fs/lockd.*o $(PLATFORMDIR)/extras/ || true
-	@cp $(TARGETDIR)/lib/modules/*/kernel/fs/exportfs.*o $(PLATFORMDIR)/extras/ || true
-	@cp $(TARGETDIR)/lib/modules/*/kernel/net/sunrpc.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_NFS),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/nfs.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_NFS),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/nfsd.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_NFS),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/lockd.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_NFS),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/exportfs.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_NFS),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/net/sunrpc.*o $(PLATFORMDIR)/extras/ || true
 	@mv $(TARGETDIR)/lib/modules/*/kernel/net/auth_rpcgss.*o $(PLATFORMDIR)/extras/ || true
 	@mv $(TARGETDIR)/lib/modules/*/kernel/net/rpcsec_gss_krb5.*o $(PLATFORMDIR)/extras/ || true
 	@mv $(TARGETDIR)/lib/modules/*/kernel/fs/xfs.*o $(PLATFORMDIR)/extras/ || true
@@ -482,6 +490,7 @@ endif
 
 	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/nls_*.*o $(PLATFORMDIR)/extras/ || true
 	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/drivers/usb/*.*o $(PLATFORMDIR)/extras/ || true
+	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/drivers/cdrom/*.*o $(PLATFORMDIR)/extras/ || true
 	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/drivers/scsi/*.*o $(PLATFORMDIR)/extras/ || true
 	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/ext2.*o $(PLATFORMDIR)/extras/ || true
 	$(if $(RTCONFIG_USB),@cp -f,@mv) $(TARGETDIR)/lib/modules/*/kernel/fs/ext3.*o $(PLATFORMDIR)/extras/ || true
@@ -638,6 +647,40 @@ busybox-clean:
 busybox-config:
 	$(MAKE) -C busybox menuconfig
 
+e2fsprogs/Makefile: e2fsprogs/Makefile.in
+	cd e2fsprogs && CFLAGS="-Os $(EXTRACFLAGS)" \
+	$(CONFIGURE) --prefix=/usr --sysconfdir=/etc --enable-elf-shlibs \
+		--disable-rpath --disable-nls \
+		--disable-debugfs --disable-imager --disable-resizer --disable-uuidd
+
+e2fsprogs: e2fsprogs/Makefile
+	$(MAKE) -C $@
+
+e2fsprogs-install:
+	install -D e2fsprogs/lib/libblkid.so.1.0 $(INSTALLDIR)/e2fsprogs/usr/lib/libblkid.so.1.0
+	install -D e2fsprogs/lib/libcom_err.so.2.1 $(INSTALLDIR)/e2fsprogs/usr/lib/libcom_err.so.2.1
+	install -D e2fsprogs/lib/libe2p.so.2.3 $(INSTALLDIR)/e2fsprogs/usr/lib/libe2p.so.2.3
+	install -D e2fsprogs/lib/libext2fs.so.2.4 $(INSTALLDIR)/e2fsprogs/usr/lib/libext2fs.so.2.4
+	install -D e2fsprogs/lib/libuuid.so.1.2 $(INSTALLDIR)/e2fsprogs/usr/lib/libuuid.so.1.2
+	$(STRIP) $(INSTALLDIR)/e2fsprogs/usr/lib/*.so.*
+	ln -sf libblkid.so.1.0 $(INSTALLDIR)/e2fsprogs/usr/lib/libblkid.so.1
+	ln -sf libcom_err.so.2.1 $(INSTALLDIR)/e2fsprogs/usr/lib/libcom_err.so.2
+	ln -sf libe2p.so.2.3 $(INSTALLDIR)/e2fsprogs/usr/lib/libe2p.so.2
+	ln -sf libext2fs.so.2.4 $(INSTALLDIR)/e2fsprogs/usr/lib/libext2fs.so.2
+	ln -sf libuuid.so.1.2 $(INSTALLDIR)/e2fsprogs/usr/lib/libuuid.so.1
+	install -D e2fsprogs/e2fsck/e2fsck $(INSTALLDIR)/e2fsprogs/usr/sbin/e2fsck
+	install -D e2fsprogs/misc/mke2fs $(INSTALLDIR)/e2fsprogs/usr/sbin/mke2fs
+	install -D e2fsprogs/misc/tune2fs $(INSTALLDIR)/e2fsprogs/usr/sbin/tune2fs
+	install -D e2fsprogs/misc/badblocks $(INSTALLDIR)/e2fsprogs/usr/sbin/badblocks
+	$(STRIP) $(INSTALLDIR)/e2fsprogs/usr/sbin/*
+	ln -sf e2fsck $(INSTALLDIR)/e2fsprogs/usr/sbin/fsck.ext2
+	ln -sf e2fsck $(INSTALLDIR)/e2fsprogs/usr/sbin/fsck.ext3
+#	ln -sf e2fsck $(INSTALLDIR)/e2fsprogs/usr/sbin/fsck.ext4
+	ln -sf mke2fs $(INSTALLDIR)/e2fsprogs/usr/sbin/mkfs.ext2
+	ln -sf mke2fs $(INSTALLDIR)/e2fsprogs/usr/sbin/mkfs.ext3
+#	ln -sf mke2fs $(INSTALLDIR)/e2fsprogs/usr/sbin/mkfs.ext4
+	install -D -m 0644 e2fsprogs/e2fsck/e2fsck.conf $(INSTALLDIR)/rom/rom/etc/e2fsck.conf
+
 httpd: shared nvram libdisk $(if $(RTCONFIG_HTTPS),mssl)
 	@$(SEP)
 	@$(MAKE) -C httpd
@@ -769,8 +812,9 @@ bridge-install:
 dnsmasq:
 	@$(SEP)
 	@$(MAKE) -C dnsmasq \
-	COPTS="$(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6) $(if $(RTCONFIG_USB_EXTRAS),,-DNO_SCRIPT) $(EXTRACFLAGS) -ffunction-sections -fdata-sections" \
-	LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections -fPIC"
+	COPTS="-DHAVE_BROKEN_RTC -DHAVE_LEASEFILE_EXPIRE $(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6) $(if $(RTCONFIG_USB_EXTRAS),,-DNO_SCRIPT -DNO_TFTP)" \
+	CFLAGS="-Os $(EXTRACFLAGS) -ffunction-sections -fdata-sections" \
+	LDFLAGS="-Wl,--gc-sections -fPIC"
 
 dnsmasq-install:
 	install -D dnsmasq/src/dnsmasq $(INSTALLDIR)/dnsmasq/usr/sbin/dnsmasq
@@ -808,13 +852,19 @@ iptables-clean:
 
 upnp: nvram shared iptables
 
-miniupnpd: iptables
+miniupnpd/config.h:
+	cd miniupnpd && ./genconfig.sh --leasefile
+
+miniupnpd: iptables miniupnpd/config.h
 	@$(SEP)
-	cp -f ./shared/version.h miniupnpd/. 
-	$(MAKE) -C miniupnpd -f Makefile.asus
+	$(MAKE) -C $@ -f Makefile.linux EXTRACFLAGS="$(EXTRACFLAGS)" \
+	IPTABLESPATH=$(TOP)/iptables ARCH=$(PLATFORM) \
+	CFLAGS="-Wall -Os -D_GNU_SOURCE $(EXTRACFLAGS) -I$(TOP)/iptables/include -I$(TOP)/shared" \
+	LDFLAGS="-L$(TOP)/iptables -liptc" \
+	miniupnpd
 
 miniupnpd-clean:
-	-$(MAKE) -C miniupnpd -f Makefile.asus clean
+	-$(MAKE) -C miniupnpd -f Makefile.linux clean
 
 miniupnpd-install:
 	install -D miniupnpd/miniupnpd $(INSTALLDIR)/miniupnpd/usr/sbin/miniupnpd
@@ -1025,6 +1075,19 @@ dhcpv6-clean:
 	-@$(MAKE) -C dhcpv6 clean
 	@rm -f dhcpv6/Makefile dhcpv6/stamp-h1 
 
+ecmh/stamp-h1:
+	@cd ecmh && touch src/stamp-h1
+
+ecmh: ecmh/stamp-h1
+	@$(MAKE) -C ecmh CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) LD=$(LD)
+
+ecmh-clean:
+	@$(MAKE) -C ecmh clean
+	@rm -f ecmh/src/stamp-h1
+
+ecmh-install: ecmh
+	install -D ecmh/src/ecmh $(INSTALLDIR)/ecmh/bin/ecmh
+	$(STRIP) $(INSTALLDIR)/ecmh/bin/ecmh
 
 p910nd:
 samba:
@@ -1223,8 +1286,6 @@ gctwimax-0.0.3rc4: $@/stamp-h1
 gctwimax-0.0.3rc4-install: gctwimax-0.0.3rc4
 	install -D gctwimax-0.0.3rc4/gctwimax $(INSTALLDIR)/gctwimax-0.0.3rc4/usr/sbin/gctwimax
 	$(STRIP) $(INSTALLDIR)/gctwimax-0.0.3rc4/usr/sbin/gctwimax
-	install -D gctwimax-0.0.3rc4/src/event.sh $(INSTALLDIR)/gctwimax-0.0.3rc4/usr/share/event.sh
-	install -D gctwimax-0.0.3rc4/src/gctwimax.conf $(INSTALLDIR)/gctwimax-0.0.3rc4/usr/share/gctwimax.conf
 
 gctwimax-0.0.3rc4-clean:
 	$(MAKE) -C gctwimax-0.0.3rc4 clean
@@ -1689,7 +1750,7 @@ igs-clean:
 
 ebtables: dummy
 	$(MAKE) -C ebtables CC=$(CC) LD=$(LD) \
-	CFLAGS="-Os $(EXTRACFLAGS) -DEBT_MIN_ALIGN=4 -Wall -Wunused" \
+	CFLAGS="-Os $(EXTRACFLAGS) -Wall -Wunused" \
 	BINDIR="/usr/sbin" LIBDIR="/usr/lib/ebtables" KERNEL_INCLUDES=$(LINUXDIR)/include $(if $(RTCONFIG_IPV6),DO_IPV6=1,)
 
 ebtables-install: ebtables
@@ -1729,12 +1790,13 @@ openvpn: openvpn/.conf openssl lzo
 openvpn/.conf:
 	cd openvpn && CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections" \
 	LDFLAGS="-L$(TOP)/openssl -L$(TOP)/lzo/src/.libs -ffunction-sections -fdata-sections -Wl,--gc-sections" \
+	CPPFLAGS="-I$(TOP)/lzo/include -I$(TOP)/openssl/include -L$(TOP)/lzo -L$(TOP)/openssl -L$(TOP)/lzo/src/.libs" \
+	IPROUTE="/usr/sbin/ip" \
+	OPENSSL_CRYPTO_LIBS="-lcrypto" \
 	$(CONFIGURE) --prefix= \
-	--with-lzo-headers="$(TOP)/lzo/include" \
-	--with-ssl-headers="$(TOP)/openssl/include/" \
-	--with-iproute-path="/usr/sbin/ip" \
 	--disable-debug --disable-plugins --enable-management --enable-small \
-	--disable-selinux --disable-socks --enable-password-save
+	--disable-selinux --disable-socks --enable-password-save \
+	ac_cv_lib_resolv_gethostbyname=no
 	touch openvpn/.conf
 
 openvpn-clean:
@@ -1742,7 +1804,7 @@ openvpn-clean:
 	@rm -f openvpn/.conf
 
 openvpn-install: openvpn
-	install -D openvpn/openvpn $(INSTALLDIR)/openvpn/usr/sbin/openvpn
+	install -D openvpn/src/openvpn/.libs/openvpn $(INSTALLDIR)/openvpn/usr/sbin/openvpn
 	$(STRIP) -s $(INSTALLDIR)/openvpn/usr/sbin/openvpn
 	chmod 0500 $(INSTALLDIR)/openvpn/usr/sbin/openvpn
 	@mkdir -p $(TARGETDIR)/rom/easy-rsa
@@ -1773,6 +1835,8 @@ lighttpd-1.4.29/stamp-h1:
 	touch lighttpd-1.4.29/stamp-h1
 
 lighttpd-1.4.29: shared nvram libdisk samba-3.5.8 pcre-8.12 libxml2 sqlite openssl lighttpd-1.4.29/stamp-h1
+	$(MAKE) -C lighttpd-1.4.29
+	$(MAKE) -C lighttpd-1.4.29/src copy-prebuild
 
 lighttpd-1.4.29-install: samba-3.5.8 sqlite libxml2 pcre-8.12 openssl lighttpd-1.4.29
 	install -D lighttpd-1.4.29/src/.libs/lighttpd $(INSTALLDIR)/lighttpd-1.4.29/usr/sbin/lighttpd
@@ -1896,7 +1960,6 @@ madwimax-0.1.1: libusb10 madwimax-0.1.1/stamp-h1
 	@$(MAKE) -C madwimax-0.1.1 all
 
 madwimax-0.1.1-install: madwimax-0.1.1
-	install -D madwimax-0.1.1/scripts/events/event.sh $(INSTALLDIR)/madwimax-0.1.1/usr/sbin/event.sh
 	install -D madwimax-0.1.1/src/madwimax $(INSTALLDIR)/madwimax-0.1.1/usr/sbin/madwimax
 	$(STRIP) $(INSTALLDIR)/madwimax-0.1.1/usr/sbin/madwimax
 
@@ -1908,7 +1971,10 @@ madwimax-0.1.1-clean:
 	-cd $(TOP)/madwimax-0.1.1 && rm -rf include/config.h scripts/udev/z60_madwimax.rules src/.deps
 
 wol/stamp-h1:
-	cd $(TOP)/wol && jm_cv_func_working_malloc=yes $(CONFIGURE) --host=mips --prefix=$(INSTALLDIR)/wol CC=mipsel-uclibc-gcc STRIP=mipsel-uclibc-strip AR=mipsel-uclibc-ar LD=mipsel-uclibc-ld NM=mipsel-uclibc-nm RANLIB=mipsel-uclibc-ranlib
+	cd $(TOP)/wol && jm_cv_func_working_malloc=yes \
+	CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections" \
+	$(CONFIGURE) --host=mips --prefix=$(INSTALLDIR)/wol CC=mipsel-uclibc-gcc STRIP=mipsel-uclibc-strip \
+	AR=mipsel-uclibc-ar LD=mipsel-uclibc-ld NM=mipsel-uclibc-nm RANLIB=mipsel-uclibc-ranlib
 	touch wol/stamp-h1
 
 wol: wol/stamp-h1
@@ -1953,6 +2019,35 @@ sd-idle: sd-idle/sd-idle-2.6
 sd-idle-install: sd-idle-2.6
 	install -D sd-idle/sd-idle-2.6 $(INSTALLDIR)/sd-idle/usr/sbin/sd-idle-2.6
 	$(STRIP) -s $(INSTALLDIR)/sd-idle/usr/sbin/sd-idle-2.6
+
+nfs-utils/stamp-h1:
+	cd nfs-utils && CPPFLAGS="$(EXTRACFLAGS) -Os" knfsd_cv_bsd_signals=no \
+	CC_FOR_BUILD=$(CC) $(CONFIGURE) --enable-nfsv3 --disable-nfsv4 --disable-ipv6 \
+	--disable-uuid --disable-gss --disable-mount --without-tcp-wrappers
+	touch nfs-utils/stamp-h1
+
+nfs-utils: nfs-utils/stamp-h1
+	$(MAKE) -C $@
+
+nfs-utils-clean:
+	-@$(MAKE) -C nfs-utils distclean
+	@rm -f nfs-utils/stamp-h1
+
+nfs-utils-install:
+	install -D nfs-utils/utils/nfsd/nfsd $(INSTALLDIR)/nfs-utils/usr/sbin/nfsd
+	install -D nfs-utils/utils/mountd/mountd $(INSTALLDIR)/nfs-utils/usr/sbin/mountd
+	install -D nfs-utils/utils/exportfs/exportfs $(INSTALLDIR)/nfs-utils/usr/sbin/exportfs
+	install -D nfs-utils/utils/showmount/showmount $(INSTALLDIR)/nfs-utils/usr/sbin/showmount
+	install -D nfs-utils/utils/statd/statd $(INSTALLDIR)/nfs-utils/usr/sbin/statd
+	install -D nfs-utils/support/lib/libnfs.so $(INSTALLDIR)/nfs-utils/usr/lib/libnfs.so
+	$(STRIP) $(INSTALLDIR)/nfs-utils/usr/sbin/* $(INSTALLDIR)/nfs-utils/usr/lib/libnfs.so
+
+portmap: portmap/Makefile
+	$(MAKE) -C $@  EXTRACFLAGS="$(EXTRACFLAGS) -Os" NO_TCP_WRAPPER=y RPCUSER=rpc
+
+portmap-install:
+	install -D portmap/portmap $(INSTALLDIR)/portmap/usr/sbin/portmap
+	$(STRIP) $(INSTALLDIR)/portmap/usr/sbin/portmap
 
 #
 # Generic rules

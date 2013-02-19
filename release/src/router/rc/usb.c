@@ -29,6 +29,8 @@
 #include <disk_share.h>
 #include <disk_initial.h>
 
+#include <linux/version.h>
+
 #include <bin_sem_asus.h>
 
 char *usb_dev_file = "/proc/bus/usb/devices";
@@ -97,6 +99,8 @@ void tune_bdflush(void)
 #define USBPRINTER_MOD	"printer"
 #define USBFS		"usbdevfs"
 #endif
+
+#define NFS_EXPORT	"/etc/exports"
 
 #ifdef RTCONFIG_USB_PRINTER
 void
@@ -360,7 +364,12 @@ void stop_usb(void)
 #ifdef RTCONFIG_MEDIA_SERVER
 	force_stop_dms();
 #endif
-	stop_nas_services();
+
+#ifdef RTCONFIG_WEBDAV
+	stop_webdav();
+#endif
+
+	stop_nas_services(0);
 
 #if defined(RTCONFIG_SAMBASRV) || defined(RTCONFIG_FTP)
 	// only stop storage services if disabled
@@ -747,6 +756,8 @@ _dprintf("cloudsync: mounted_path=%s.\n", mounted_path);
 		stop_app();
 #endif
 
+	run_custom_script_blocking("unmount", mnt->mnt_dir);
+
 	sync();
 	sleep(1);	// Give some time for buffers to be physically written to disk
 
@@ -938,9 +949,10 @@ _dprintf("%s: max_ports=%d.\n", __FUNCTION__, max_ports);
 
 			if(check_if_file_exist(buff1) && !check_if_file_exist(buff2)){
 				// fsck the partition.
-				if(!strcmp(type, "ext2") || !strcmp(type, "ext3")
+				if(host_num != -3 &&
+						(!strcmp(type, "ext2") || !strcmp(type, "ext3")
 						|| !strcmp(type, "vfat") || !strcmp(type, "msdos")
-						|| !strcmp(type, "ntfs") || !strcmp(type, "ufsd")
+						|| !strcmp(type, "ntfs") || !strcmp(type, "ufsd"))
 						){
 					findmntents(dev_name, 0, umount_mountpoint, EFH_HP_REMOVE);
 					memset(command, 0, PATH_MAX);
@@ -963,8 +975,10 @@ _dprintf("%s: max_ports=%d.\n", __FUNCTION__, max_ports);
 				putenv(buff2);
 				/* Run user *.asusrouter and post-mount scripts if any. */
 				memset(command, 0, PATH_MAX);
-				sprintf(command, "%s/asusware", mountpoint);
-				run_userfile(command, ".asusrouter", NULL, 3);
+				//sprintf(command, "%s/asusware", mountpoint);
+				//run_userfile(command, ".asusrouter", NULL, 3);
+				sprintf(command, "%s/asusware/.asusrouter", mountpoint);
+				system(command);
 				unsetenv("APPS_DEV");
 				unsetenv("APPS_MOUNTED_PATH");
 			}
@@ -1431,6 +1445,9 @@ void write_ftpd_conf()
 	fprintf(fp, "xferlog_enable=NO\n");
 	fprintf(fp, "syslog_enable=NO\n");
 	fprintf(fp, "connect_from_port_20=YES\n");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
+	fprintf(fp, "use_sendfile=NO\n");
+#endif
 //	fprintf(fp, "listen=YES\n");
 	fprintf(fp, "listen%s=YES\n",
 #ifdef RTCONFIG_IPV6
@@ -1471,7 +1488,10 @@ void write_ftpd_conf()
 		fprintf(fp, "xferlog_file=/var/log/vsftpd.log\n");
 	}
 
+	append_custom_config("vsftpd.conf", fp);
 	fclose(fp);
+
+	use_custom_config("vsftpd.conf", "/etc/vsftpd.conf");
 }
 
 /*
@@ -1566,6 +1586,8 @@ void enable_gro()
 	char *argv[3] = {"echo", "", NULL};
 	char lan_ifname[32], *lan_ifnames, *next;
 	char path[64] = {0};
+
+	if(nvram_get_int("gro_disable")) return;
 
 	/* enabled gso on vlan interface */
 	lan_ifnames = nvram_safe_get("lan_ifnames");
@@ -1782,9 +1804,12 @@ void start_dms(void)
 				dmsdir,
 				serial
 				);
+			append_custom_config(MEDIA_SERVER_APP".conf",f);
 
 			fclose(f);
 		}
+
+		use_custom_config(MEDIA_SERVER_APP".conf","/etc/"MEDIA_SERVER_APP".conf");
 
 		/* start media server if it's not already running */
 		if (pidof(MEDIA_SERVER_APP) <= 0) {
@@ -2207,9 +2232,9 @@ void stop_cloudsync(){
 #endif
 
 #ifdef RTCONFIG_USB
-void start_nas_services(void)
+void start_nas_services(int force)
 {
-	if (getpid() != 1) {
+	if(!force && getpid() != 1){
 		notify_rc_after_wait("start_nasapps");
 		return;
 	}
@@ -2220,12 +2245,22 @@ void start_nas_services(void)
 		// webdav still needed if no disk is mounted
 		start_webdav();
 #endif
+
+#ifdef RTCONFIG_SAMBASRV
+		if (nvram_get_int("smbd_master") || nvram_get_int("smbd_wins")) {
+			start_samba();
+		}
+#endif
+
 		return;
 	}
 
 	create_passwd();
 #ifdef RTCONFIG_SAMBASRV
 	start_samba();
+#endif
+#ifdef RTCONFIG_NFS
+	start_nfsd();
 #endif
 
 if (nvram_match("asus_mfg", "0")) {
@@ -2237,14 +2272,14 @@ if (nvram_match("asus_mfg", "0")) {
 	start_mt_daapd();
 #endif
 #ifdef RTCONFIG_WEBDAV
-	start_webdav();
+	//start_webdav();
 #endif
 }
 }
 
-void stop_nas_services(void)
+void stop_nas_services(int force)
 {
-	if (getpid() != 1) {
+	if(!force && getpid() != 1){
 		notify_rc_after_wait("stop_nasapps");
 		return;
 	}
@@ -2259,8 +2294,13 @@ void stop_nas_services(void)
 #ifdef RTCONFIG_SAMBASRV
 	stop_samba();
 #endif
+
+#ifdef RTCONFIG_NFS
+	stop_nfsd();
+#endif
+
 #ifdef RTCONFIG_WEBDAV
-	stop_webdav();
+	//stop_webdav();
 #endif
 }
 
@@ -2270,9 +2310,9 @@ void restart_nas_services(int stop, int start)
 
 	/* restart all NAS applications */
 	if (stop)
-		stop_nas_services();
+		stop_nas_services(0);
 	if (start)
-		start_nas_services();
+		start_nas_services(0);
 	file_unlock(fd);
 }
 
@@ -2285,11 +2325,19 @@ void restart_sambaftp(int stop, int start)
 #ifdef RTCONFIG_SAMBASRV
 		stop_samba();
 #endif
+
+#ifdef RTCONFIG_NFS
+		stop_nfsd();
+#endif
+
 #ifdef RTCONFIG_FTP
 		stop_ftpd();
 #endif
 #ifdef RTCONFIG_WEBDAV
 		stop_webdav();
+#endif
+#ifdef RTCONFIG_NFS
+		start_nfsd();
 #endif
 	}
 	
@@ -2298,6 +2346,11 @@ void restart_sambaftp(int stop, int start)
 		create_passwd();
 		start_samba();
 #endif
+
+#ifdef RTCONFIG_NFS
+		start_nfsd();
+#endif
+
 #ifdef RTCONFIG_FTP
 		start_ftpd();
 #endif
@@ -2309,7 +2362,7 @@ void restart_sambaftp(int stop, int start)
 }
 
 int ejusb_main(int argc, const char *argv[]){
-	disk_info_t *disk_info, *disk_list;
+	disk_info_t *disk_list, *disk_info;
 	partition_info_t *partition_info;
 	char nvram_name[32], device_name[8], devpath[16];
 	int got_usb_port;
@@ -2365,6 +2418,261 @@ int ejusb_main(int argc, const char *argv[]){
 
 	return 0;
 }
+
+#ifdef RTCONFIG_DISK_MONITOR
+static int diskmon_status(int status)
+{
+	static int run_status = DISKMON_IDLE;
+	int old_status = run_status;
+	char *message;
+
+	switch (status) {
+	case DISKMON_IDLE:
+		message = "be idle";
+		break;
+	case DISKMON_START:
+		message = "start...";
+		break;
+	case DISKMON_UMOUNT:
+		message = "unmount partition";
+		break;
+	case DISKMON_SCAN:
+		message = "scan partition";
+		break;
+	case DISKMON_REMOUNT:
+		message = "re-mount partition";
+		break;
+	case DISKMON_FINISH:
+		message = "done";
+		break;
+	case DISKMON_FORCE_STOP:
+		message = "forcely stop";
+		break;
+	default:
+		/* Just return previous status */
+		return old_status;
+	}
+
+	/* Set new status */
+	run_status = status;
+	nvram_set_int("diskmon_status", status);
+	logmessage("disk monitor", message);
+	return old_status;
+}
+
+static int stop_diskscan()
+{
+	return nvram_get_int("diskmon_force_stop");
+}
+
+static void start_diskscan()
+{
+	disk_info_t *disk_list, *disk_info;
+	partition_info_t *partition_info;
+	char *policy, *usbport, *monpart, devpath[16];
+
+	if(stop_diskscan())
+		return;
+
+	policy = nvram_safe_get("diskmon_policy");
+	usbport = nvram_safe_get("diskmon_usbport");
+	monpart = nvram_safe_get("diskmon_part");
+
+	disk_list = read_disk_data();
+	if(disk_list == NULL){
+		printf("Can't get any disk's information.\n");
+		return;
+	}
+
+	for(disk_info = disk_list; disk_info != NULL; disk_info = disk_info->next){
+		if(!strcmp(policy, "disk") && strcmp(usbport, disk_info->port))
+			continue;
+
+		for(partition_info = disk_info->partitions; partition_info != NULL; partition_info = partition_info->next){
+			if(!strcmp(policy, "part") && strcmp(monpart, partition_info->device))
+				continue;
+
+			if(stop_diskscan())
+				goto stop_scan;
+
+			// umount partition and stop USB apps.
+			cprintf("disk_monitor: umount partition %s...\n", partition_info->device);
+			diskmon_status(DISKMON_UMOUNT);
+			sprintf(devpath, "/dev/%s", partition_info->device);
+			umount_partition(devpath, 0, NULL, NULL, EFH_HP_REMOVE);
+
+			if(stop_diskscan())
+				goto stop_scan;
+
+			// scan partition.
+			eval("mount"); /* what for ??? */
+			cprintf("disk_monitor: scan partition %s...\n", partition_info->device);
+			diskmon_status(DISKMON_SCAN);
+			if(!strcmp(partition_info->file_system, "ntfs") || !strcmp(partition_info->file_system, "ufsd"))
+				eval("chkntfs", "-a", "-f", devpath);
+			else{
+				char cmd[16];
+				sprintf(cmd, "fsck.%s", partition_info->file_system);
+				cprintf("disk_monitor: %s partition %s...\n", cmd, partition_info->device);
+				eval(cmd, "-p", devpath);
+			}
+
+			if(stop_diskscan())
+				goto stop_scan;
+
+			// re-mount partition.
+			cprintf("disk_monitor: re-mount partition %s...\n", partition_info->device);
+			diskmon_status(DISKMON_REMOUNT);
+			mount_partition(devpath, -3, NULL, partition_info->device, EFH_HP_ADD);
+
+			start_nas_services(1);
+		}
+	}
+
+	free_disk_data(&disk_list);
+	// finish & restart USB apps.
+	cprintf("disk_monitor: done.\n");
+	diskmon_status(DISKMON_FINISH);
+	return;
+
+stop_scan:
+	free_disk_data(&disk_list);
+	diskmon_status(DISKMON_FORCE_STOP);
+}
+
+static void diskmon_sighandler(int sig)
+{
+	switch(sig) {
+	case SIGTERM:
+		cprintf("disk_monitor: Finish!\n");
+		unlink("/var/run/disk_monitor.pid");
+		exit(0);
+	case SIGUSR1:
+		cprintf("disk_monitor: Check status: %d.\n", diskmon_status(-1));
+		break;
+	case SIGALRM:
+		cprintf("disk_monitor: Got SIGALRM...\n");
+		break;
+	}
+}
+
+void start_diskmon(void)
+{
+	char *diskmon_argv[] = { "disk_monitor", NULL };
+	pid_t pid;
+
+	if (getpid() != 1) {
+		notify_rc("start_diskmon");
+		return;
+	}
+
+	_eval(diskmon_argv, NULL, 0, &pid);
+}
+
+void stop_diskmon(void)
+{
+	if (getpid() != 1) {
+		notify_rc("stop_diskmon");
+		return;
+	}
+
+	killall_tk("disk_monitor");
+}
+
+int diskmon_main(int argc, const char *argv[])
+{
+	FILE *fp;
+	sigset_t mask;
+	int diskmon_freq;
+	time_t now;
+	struct tm local;
+	char *nv, *nvp;
+	char *set_day, *set_week, *set_hour;
+	int val_day, val_hour;
+	int wait_second, wait_hour;
+
+	fp = fopen("/var/run/disk_monitor.pid", "w");
+	if(fp != NULL) {
+		fprintf(fp, "%d\n", getpid());
+		fclose(fp);
+	}
+
+	cprintf("disk_monitor: starting...\n");
+	diskmon_status(DISKMON_IDLE);
+
+	nvram_set_int("diskmon_force_stop", 0);
+
+	signal(SIGTERM, diskmon_sighandler);
+	signal(SIGUSR1, diskmon_sighandler);
+	signal(SIGALRM, diskmon_sighandler);
+
+	sigfillset(&mask);
+	sigdelset(&mask, SIGTERM);
+	sigdelset(&mask, SIGUSR1);
+	sigdelset(&mask, SIGALRM);
+
+	diskmon_freq = nvram_get_int("diskmon_freq");
+
+	nv = nvp = strdup(nvram_safe_get("diskmon_freq_time"));
+	if(!nv || strlen(nv) <= 0){
+		cprintf("disk_monitor: Finish without setting the running time!\n");
+		exit(0);
+	}
+
+	if((vstrsep(nvp, ">", &set_day, &set_week, &set_hour) != 3)){
+		cprintf("disk_monitor: Finish without the correct running time!\n");
+		exit(0);
+	}
+
+	val_hour = atoi(set_hour);
+	if(diskmon_freq == DISKMON_FREQ_MONTH)
+		val_day = atoi(set_day);
+	else if(diskmon_freq == DISKMON_FREQ_WEEK)
+		val_day = atoi(set_week);
+	else if(diskmon_freq == DISKMON_FREQ_DAY){
+		val_day = -1;
+	}
+	else{ // DISKMON_FREQ_DISABLE
+		cprintf("disk_monitor: Finish without setting the frequency!\n");
+		exit(0);
+	}
+
+	while(1){
+		time(&now);
+		localtime_r(&now, &local);
+cprintf("\ndisk_monitor: day=%d, week=%d, time=%d:%d.\n", local.tm_mday, local.tm_wday, local.tm_hour, local.tm_min);
+
+		if(local.tm_min <= DISKMON_SAFE_RANGE){
+			if(val_hour == local.tm_hour){
+				if((diskmon_freq == DISKMON_FREQ_MONTH && val_day == local.tm_mday) || 
+				   (diskmon_freq == DISKMON_FREQ_WEEK && val_day == local.tm_wday) ||
+				   (diskmon_freq == DISKMON_FREQ_DAY)){
+					// Running!!
+					diskmon_status(DISKMON_START);
+					start_diskscan();
+					sleep(10);
+					diskmon_status(DISKMON_IDLE);
+				}
+				wait_hour = DISKMON_DAY_HOUR;
+			}
+			else if(val_hour > local.tm_hour)
+				wait_hour = val_hour-local.tm_hour;
+			else // val_hour < local.tm_hour
+				wait_hour = 23-local.tm_hour+val_hour;
+
+			wait_second = wait_hour*DISKMON_HOUR_SEC;
+		}
+		else
+			wait_second = (60-local.tm_min)*60;
+
+cprintf("disk_monitor: wait_second=%d...\n", wait_second);
+		alarm(wait_second);
+		sigsuspend(&mask);
+	}
+
+	unlink("/var/run/disk_monitor.pid");
+}
+#endif
 
 #if defined(RTCONFIG_APP_PREINSTALLED) || defined(RTCONFIG_APP_NETINSTALLED)
 int start_app(){
@@ -2478,6 +2786,97 @@ int start_sd_idle(void) {
 int stop_sd_idle(void) {
 	int ret = eval("killall","sd-idle-2.6");
 	return ret;
+}
+
+#endif
+
+#ifdef RTCONFIG_NFS
+int start_nfsd(void)
+{
+	struct stat	st_buf;
+	FILE 		*fp;
+        char *nv, *nvp, *b, *c;
+	char *dir, *access, *options;
+
+	if (nvram_match("nfsd_enable", "0")) return 0;
+
+	/* create directories/files */
+	mkdir("/var/lib", 0755);
+	mkdir("/var/lib/nfs", 0755);
+# ifdef LINUX26
+	mkdir("/var/lib/nfs/v4recovery", 0755);
+	mount("nfsd", "/proc/fs/nfsd", "nfsd", MS_MGC_VAL, NULL);
+# endif
+	close(creat("/var/lib/nfs/etab", 0644));
+	close(creat("/var/lib/nfs/xtab", 0644));
+	close(creat("/var/lib/nfs/rmtab", 0644));
+
+	/* (re-)create /etc/exports */
+	if (stat(NFS_EXPORT, &st_buf) == 0)	{
+		unlink(NFS_EXPORT);
+	}
+
+	if ((fp = fopen(NFS_EXPORT, "w")) == NULL) {
+		perror(NFS_EXPORT);
+		return 1;
+	}
+
+	nv = nvp = strdup(nvram_safe_get("nfsd_exportlist"));
+	if (nv) {
+		while ((b = strsep(&nvp, "<")) != NULL) {
+			if ((vstrsep(b, ">", &dir, &access, &options) != 3))
+				continue;
+
+			fputs(dir, fp);
+
+			while ((c = strsep(&access, " ")) != NULL) {
+				fprintf(fp, " %s(no_root_squash%s%s)", c, ((strlen(options) > 0) ? "," : ""), options);
+			}
+			fputs("\n", fp);
+		}
+		free(nv);
+	}
+
+	append_custom_config("exports", fp);
+	fclose(fp);
+
+	eval("/usr/sbin/portmap");
+	eval("/usr/sbin/statd");
+
+	if (nvram_match("nfsd_enable_v2", "1")) {
+		eval("/usr/sbin/nfsd");
+		eval("/usr/sbin/mountd");
+	} else {
+		eval("/usr/sbin/nfsd", "-N 2");
+		eval("/usr/sbin/mountd", "-N 2");
+	}
+
+	sleep(1);
+	eval("/usr/sbin/exportfs", "-a");
+
+	return 0;
+}
+
+int restart_nfsd(void)
+{
+	eval("/usr/sbin/exportfs", "-au");
+	eval("/usr/sbin/exportfs", "-a");
+
+	return 0;
+}
+
+int stop_nfsd(void)
+{
+	killall_tk("mountd");
+	killall("nfsd", SIGKILL);
+	killall_tk("statd");
+	killall_tk("portmap");
+
+#ifdef LINUX26
+	umount("/proc/fs/nfsd");
+#endif
+
+	return 0;
 }
 
 #endif

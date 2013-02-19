@@ -67,7 +67,10 @@ function redirect(){
 }
 
 function redirect_qis(){
-	parent.location.href = 'http://'+parent.document.form.lan_ipaddr.value+'/index.asp';
+	/*if('<% nvram_get("sw_mode"); %>' == '1')
+		parent.location.href = 'http://www.asusnetwork.net/index.asp';
+	else*/
+		parent.location.href = 'http://'+parent.document.form.lan_ipaddr.value+'/index.asp';
 }
 
 function initial(){
@@ -84,8 +87,14 @@ function initial(){
 		else {
 			if(getflag.length > 0)
 				document.redirectForm.flag.value = getflag;
-	
+				
 			if(parent.document.getElementById("hidden_frame")){
+
+				if(getflag == "verify_detect_reboot"){
+					setTimeout("parent.parent.check_DUT();", restart_time*1000);
+					return;
+				}
+				
 				setTimeout("qis_delay_redirect('/qis/QIS_verify_detect.htm');", restart_time*1000);
 			}
 			else{
@@ -128,7 +137,7 @@ function initial(){
   	setTimeout("parent.parent.checkDDNSReturnCode();", 1000);
 	}
 	else if(action_script.indexOf("start_webs_upgrade") >= 0) {
-		setTimeout("parent.showLoadingBar(restart_time);", 1000); 
+  	setTimeout("parent.startDownloading();", 1000);
 	}
 	else if(action_script == "restart_cloudsync"){
 		/* if multi-rule
@@ -153,12 +162,13 @@ function initial(){
 			else if(current_page.indexOf("Advanced_OperationMode_Content.asp") >= 0){
 				parent.document.getElementById('drword').innerHTML = "<#LAN_IP_changed_suggedtion1#>"+parent.document.form.lan_ipaddr.value+"<#LAN_IP_changed_suggedtion2#><br/>";
 				setTimeout("hideLoading()	",20000);
+				setTimeout("parent.document.getElementById('Loading').style.display = 'none';",20000);
 				setTimeout("parent.dr_advise();",20000);
-				setTimeout("redirect()",35000);
+				setTimeout("redirect()", restart_time*1000);
 			}
 			else if(current_page.indexOf("Advanced_LAN_Content.asp") >= 0){
 				parent.document.getElementById('drword').innerHTML = "<#LAN_IP_changed_suggedtion1#>"+parent.document.form.lan_ipaddr.value+"<#LAN_IP_changed_suggedtion2#><br/>";
-				setTimeout("hideLoading()	",20000);
+				setTimeout("hideLoading();",20000);
 				setTimeout("parent.dr_advise();",20000);
 				setTimeout("redirect_qis()",35000);
 			}

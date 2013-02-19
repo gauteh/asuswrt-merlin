@@ -1,6 +1,5 @@
-Asuswrt-Merlin - build 3.0.0.4.220.18b (24-Sept-2012)
-=====================================================
-
+Asuswrt-Merlin - build 3.0.0.4.270.25 (xx-xxx-2013)
+===================================================
 
 About
 -----
@@ -24,8 +23,8 @@ performance, and performance over features.
 Supported Devices
 -----------------
 Supported devices are:
- * RT-N66U
- * RT-AC66U
+ * RT-N66U and RT-N66R
+ * RT-AC66U and RT-AC66R
 
 These devices have experimental support (because I don't own one to test it):
  * RT-N16
@@ -36,47 +35,68 @@ Features
 --------
 Here is a list of features that Asuswrt-merlin brings over the original firmware:
 
-- Based on the source code of release 3.0.0.4.220
-- Various bugfixes (like the crash on VPN/NAT Loopback access of LAN devices)
-- WakeOnLan web interface (with user-entered preset targets)
-- Persistent JFFS partition
-- User scripts that run on specific events
-- SSHD (through dropbear)
-- HTTPS web interface
-- Crond
-- Clicking on the MAC address of an unidentified client will do a lookup in
-  the OUI database (ported from DD-WRT).
-- Optionally turn the WPS button into a radio enable/disable switch
-- Optionally save traffic stats to disk (USB or JFFS partition)
-- Display monthly traffic reports
-- Display active/tracked network connections
-- Allows tweaking TCP/UDP connection tracking timeouts
-- CIFS client support (for mounting remote SMB share on the router)
-- Layer7 iptables matching
-- User-defined options for WAN DHCP queries (required by some ISPs)
-- Name field on the DHCP reservation list
-- Improved NAT loopback (based on code from phuzi0n from the DD-WRT forums)
-- Dual WAN support (both failover and load 
-  balancing supported) (EXPERIMENTAL) (RT-N66U, RT-AC66U)
-- Disk spindown after user-configurable inactivity timeout
-- System info summary page
-- Wireless client IP, hostname, rate and rssi on the Wireless Log page
-- OpenVPN client and server, based on code originally written by
-  Keith Moyer for Tomato and reused with his 
-  permission. (RT-N66U, RT-AC66U)
+System:
+   - Based on the 3.0.0.4.270 source release from Asus
+   - Various bugfixes (like the crash on VPN/NAT Loopback access of LAN devices)
+   - Some components were updated to their latest versions, for improved stability
+     and security
+   - Persistent JFFS partition
+   - User scripts that run on specific events
+   - Cron jobs
+   - Customized config files for router services
+   - LED control - put your Dark Knight in Stealth Mode by turning off all LEDs
+
+Disk sharing:
+   - Act as a Master Browser
+   - Act as a WINS server
+   - Optionally use shorter share names (folder name only)
+   - Disk spindown after user-configurable inactivity timeout
+
+Networking:
+   - WakeOnLan web interface (with user-entered preset targets)
+   - SSHD
+   - Allows tweaking TCP/UDP connection tracking timeouts
+   - CIFS client support (for mounting remote SMB share on the router)
+   - Layer7 iptables matching
+   - User-defined options for WAN DHCP queries (required by some ISPs)
+   - Improved NAT loopback (based on code from phuzi0n from the DD-WRT forums)
+   - OpenVPN client and server, based on code originally written by
+     Keith Moyer for Tomato and reused with his permission. (RT-N66U, RT-AC66U)
+   - Option to control Spanning-Tree Protocol support.
+
+
+Web interface:
+   - Clicking on the MAC address of an unidentified client will do a lookup in
+     the OUI database (ported from DD-WRT).
+   - Optionally save traffic stats to disk (USB or JFFS partition)
+   - Enhanced traffic monitoring: added monthly, as well as per IP monitoring
+   - Display active/tracked network connections
+   - Name field on the DHCP reservation list and Wireless ACL list
+   - System info summary page
+   - Wireless client IP, hostname, rate and rssi on the Wireless Log page
+   - Wifi icon reports the state of both radios
+
+
+A few features that first debuted in Asuswrt-Merlin have since been 
+integrated/enabled in the official firmware:
+
+- 64K NVRAM (RT-N66U)
+- HTTPS
+- Turning WPS button into a radio on/off toggle
 
 
 
 Installation
 ------------
 Simply flash it like any regular update.  You should not need to reset to 
-factory defaults, unless coming from a version that used a different 
-nvram size.  You can revert back to an original Asus firmware at any time just
-by flashing one.
+factory defaults (see note below for one exception).  
+You can revert back to an original Asus firmware at any time just
+by flashing a firmware downloaded from Asus's website.
 
-NOTE: If you were still running a 32KB nvram firmware on an RT-N66U, the
-first time you flash a 64KB-enabled firmware (such as Asuswrt-merlin) it 
-will wipe ALL your current settings and revert back to factory default!
+NOTE: If you were still running a 32KB nvram firmware on an RT-N66U (which 
+usually mean an original firmware older than 3.0.0.4.220), the first time 
+you flash a 64KB-enabled firmware (such as Asuswrt-merlin) it will 
+wipe ALL your current settings and revert back to factory default!
 This is required to upgrade the nvram storage to 64 KB.
 
 
@@ -84,11 +104,11 @@ Usage
 -----
 
 * JFFS *
-JFFS is a writable section of the flash memory (around 12 MB) which will 
-allow you to store small files (such as scripts) inside the router without 
-needing to have a USB disk plugged in.  This space will survive reboot (but 
-it *MIGHT NOT survive firmware flashing*, so back it up first before flashing!).  
-It will also be available fairly early at boot (before USB disks).
+JFFS is a writable section of the flash memory which will allow you to store small 
+files (such as scripts) inside the router without needing to have a USB disk 
+plugged in.  This space will survive reboot (but it *MIGHT NOT survive 
+firmware flashing*, so back it up first before flashing!).  It will also be 
+available fairly early at boot (before USB disks).
 
 To enable this option, go to the Administration page, under the System tab.
 
@@ -123,6 +143,10 @@ certain events occur.  Those scripts must be saved in /jffs/scripts/
   mounting. This script is also passed the device path being mounted as an 
   argument which can be used in the script using $1.
 - post-mount:  Just after a partition is mounted
+- unmount: Just before unmounting a partition.  This is a blocking script, so be
+  careful with it.  The mount point is passed as an argument to the script.
+- dhcpc-event: Called whenever a DHCP event occurs on the WAN interface.
+               The type of event (bound, release, etc...) is passed as an argument.
 
 Don't forget to set them as executable:
 
@@ -150,21 +174,6 @@ insert a RSA public key there for keypair-based authentication.  There
 is also an option to make ssh access available over WAN.
 
 
-* HTTPS management *
-I re-enabled HTTPS access in the firmware.  From the Administration->System 
-page you can configure your router so it accepts connections on http, https 
-or both.  You can also change the https port to a different one 
-(default is 8443).
-
-
-
-* WPS button mode - toggle radio *
-You can configure the router so pressing the WPS button will 
-toggle the radio on/off instead of starting WPS mode.
-The option to enable this feature can be found on the 
-Administration page, on the System tab.
-
-
 
 * Crond *
 Crond will automatically start at boot time.  You can 
@@ -175,9 +184,14 @@ put your cron script somewhere such as in the jffs partition,
 and at boot time copy it to /var/spool/cron/crontabs/ using 
 an init-start user script.
 
+A simple way to manage your cron jobs is through the
+included "cru" command.  Just run "cru" to see the 
+usage information.  You can then put your "cru" 
+commands inside a user script to re-generate your cron jobs 
+at boot time.
 
 
-* Traffic history saving *
+* Enhanced Traffic monitoring *
 Under Tools -> Other Settings are options that will allow you 
 to save your traffic history to disk, preserving it between 
 router reboots (by default it is currently kept in RAM, 
@@ -192,8 +206,24 @@ if you are saving to jffs, to reduce wearing out
 your flash memory.  Make sure not to forget the trailing 
 slash ad the end of the path.
 
-Also, a new "Monthly" page has been added to the Traffic 
-Monitor pages.
+Also, Asuswrt-Merlin can now track your traffic on a 
+per device (IP) basis, allowing you to monitor traffic 
+history of individual computers.  To enable this, you 
+must first set a custom location to store your 
+traffic database (see above).  Once done, enable 
+the Advanced Traffic Monitoring option.  This will 
+add three new entries to the Traffic Monitor 
+page selector (on the Traffic Monitoring page).
+
+You can optionally specify which IP to monitor, 
+or exclude some IPs from monitoring.  Each IP 
+must be separated by a comma.
+
+It's strongly recommended that you assign a static 
+IP to devices you wish to monitor to ensure they 
+don't get a different IP over time, which would 
+make the collected data somewhat unreliable.
+The monitoring is done per IP, NOT per MAC.
 
 
 
@@ -228,7 +258,9 @@ mount \\\\192.168.1.100\\ShareName /cifs1 -t cifs -o "username=User,password=Pas
 
 
 * Dual WAN (EXPERIMENTAL) *
-Asuswrt originally supports using a USB 3G/4G modem to use as a 
+*** Disabled in regular builds - this feature isn't ready yet ***
+
+Asuswrt originally support using a USB 3G/4G modem as a 
 failover Internet connection.  Dual WAN is the next step, also 
 developped by Asus but left disabled so far in their official 
 releases (probably because this is still work in progress).  
@@ -240,8 +272,9 @@ interface.  The second difference is that in addition to failover
 mode, Dual WAN also supports a load balancing mode, allowing 
 you to share both connections at once.
 
-Keep in mind that Dual WAN is still an experimental feature, until 
-the time Asus finishes developping and testing it.
+Keep in mind that Dual WAN is still an EXPERIMENTAL and UNSUPPORTED 
+feature, until the time Asus finishes developping and testing it.  
+Some things are expected to not work properly.
 
 
 
@@ -275,6 +308,43 @@ Github repository.
 
 
 
+* Customized config files *
+You can append content to various configuration files that are 
+created by the firmware, or even completely replace them with 
+custom config files you have created.  Those config override 
+files must be stored in /jffs/configs/.  To have a config 
+file appended to the one created by the firmware, simply 
+add ".add" at the end of the file listed below.  For 
+example, /jffs/configs/dnsmasq.conf.add will be added at the 
+end of the dnsmasq configuration file that is created by 
+the firmware, while /jffs/configs/dnsmasq.conf would completely 
+replace it.
+
+Note that replacing a config file with your own implies that you 
+properly fill in all the fields usually dynamically created by 
+the firmware.  Since some of these entries require 
+dynamic parameters, you might want to dynamically generate
+the config file through an init-start script which 
+could retrieve parameters from nvram, and insert them in 
+your custom config.
+
+The list of available config overrides:
+
+* dnsmasq.conf
+* vsftpd.conf
+* pptpd.conf
+* dhcp6s.conf
+* hosts (for /etc/hosts)
+* smb.conf
+* minidlna.conf
+* profile (shell profile, only profile.add suypported)
+* upnp (for miniupnpd)
+* radvd.conf
+* fstab (only fstab supported, remember to create mount point
+        through init-start first if it doesn't exist!)
+* group, gshadow, passwd, shadow (only .add versions supported)
+
+
 Source code
 -----------
 The source code with all my modifications can be found 
@@ -286,6 +356,195 @@ https://github.com/RMerl/asuswrt-merlin
 
 History
 -------
+
+3.0.0.4.270.25
+   - NEW: NFS folder sharing.  Webui can be found on the AiDisk pages, same place
+          where you can manage SMB and FTP shares.
+   - NEW: dhcpc-event and zcip-event scripts (called on WAN events)
+   - NEW: Ccustom configs: group.add, gshadow.add, passwd.add, shadow.add
+   - CHANGED: Added a folder picker to the Tools Other Settings page to select
+              a location to store your traffic data files.
+   - FIXED: Added missing badblocks program
+   - FIXED: Timing issues under IE where resolved device names would 
+            not display on certain pages (such as the Sysinfo page)
+   - FIXED: VPN client "common name" wasn't getting saved
+   - FIXED: DHCP client will be less aggressive in attempting to obtain
+            a lease (wait 2 mins instead of 20 secs between attempts),
+            should help with ISPs like Charter who will blacklist you 
+            if you send too many Discovery packets in a short period of time.
+   - FIXED: Made profile.add be run after any Optware profile, so the user
+            changes will have priority over anything else.
+
+
+3.0.0.4.270.24
+   - NEW: Rebased on 3.0.0.4.270.  Notable changes:
+      o New driver builds (these are NOT the new major versions that
+        Asus are still working on)
+      o NTP-related changes
+   - NEW: Report CTF (HW Acceleration) state on Sysinfo page.
+   - NEW: Display Ethernet port states on the Sysinfo page.
+   - NEW: Replaced Busybox fsck/mkfs tools with those from e2fsprogs, should
+          be more reliable.
+   - CHANGED: Temperatures on Sysinfo page will now auto-update every 3 seconds.
+   - CHANGED: Connections page now uses Ajax for slightly better rendering
+   - CHANGED: Improved name resolution on traffic monitor page, now uses
+              a device's hostname if it reported one.
+   - CHANGED: Client List now uses our improved name resolution code,
+              will overwrite names with those entered on the DHCP static
+              lease page.
+   - CHANGED: Updated to OpenVPN 2.3.0 and lzo 2.06.
+   - CHANGED: Updated Busybox to 1.20.2 (with Oleg/wl500g patches re-applied).
+              Lots of fixes, including GPT support in fdisk.
+   - CHANGED: Updated Miniupnpd to version 1.8.  NOTE: previous versions were NOT
+              affected by the recent UPNP exploit disclosure.  This is just as
+              an added security precaution.
+   - FIXED: Temperature on Performance Tuning page would fail to update if a radio
+            was disabled.
+   - FIXED: Various timing issues causing some TrafficMonitoring and the Sysinfo
+            pages to often fail loading under IE.
+   - FIXED: JS error on the Per Device pages if FW failed to load the 
+            traffic history.
+   - FIXED: ebtables were still broken, fixed by a complete rebuild.
+   - FIXED: Some OpenVPN fields rejected -1 as being valid.
+   - FIXED: Hide 5G radio info from Sysinfo page if router is single band (RT-N16)
+   - FIXED: Master Browser/WINS would not work if there was no USB disk plugged.
+   - FIXED: Samba would bind to the WAN interface while in router mode (Asus bug)
+   - FIXED: Backported various kernel fixes from Oleg/WL500G, Tomato and Kernel.org to 
+            help improve HDD > 2 TB support (still not perfect, some USB enclosures
+            are simply not Linux compatible)
+   - FIXED: Display of Connections under IE
+   - FIXED: Trying to apply settings on the System page with a username containing
+            a non-alphanum would incorrectly assume you just tried to change to
+            an account name that already existed (Asus bug).
+   - FIXED: Wouldn't enable wins in Samba if you had a WINS IP entered on the
+            DHCP configuration page.
+
+
+3.0.0.4.266.23b:
+   - FIXED: The IE fix ended up breaking Firefox (and meanwhile, Chrome worked
+            fine no matter which method was used to build that dropdown).
+
+
+3.0.0.4.266.23:
+   - NEW: Rebased on 3.0.0.4.266 (from the RT-AC66U GPL)
+   - NEW: Tools icon contributed by Maximilian Czarnecki.
+   - FIXED: Skip bad blocks while erasing MTD partition (fixes RT-AC66U
+            failing to format JFFS2 partition due to bad blocks)
+   - FIXED: Router would have no hostname if you enabled ssh but kept
+            telnet disabled.
+   - FIXED: Couldn't add new ebtables rules (regression in 264.22)
+   - FIXED: customized minidlna.conf
+   - FIXED: Traffic monitoring per IP is unreliable if hardware acceleration
+            is enabled.  Do not load CTF if booting with cstats enabled.
+   - FIXED: Per Device traffic monitor pages missing under IE
+
+
+3.0.0.4.264.22:
+   - NEW: Rebased on 3.0.0.4.264 (from the RT-N53 GPL).
+   - NEW: Traffic monitoring per IP added to the Traffic Monitor section.
+          Based on the Tomato IPTraffic implementation by Teaman.
+   - NEW: Option to disable the Netfilter SIP helper (Firewall page), allows
+          people to manually forward port 5060 to their own SIP server
+   - NEW: Option to enable/disable logging DHCP client queries (LAN->DHCP page)
+   - FIXED: Tabs would disappear while on the Monthly traffic page.
+   - FIXED: Really fixed Firefox issue (the fix wasn't merged
+            in release 260.21).
+   - FIXED: Router crash if the list of MAC filters + their names got too long.
+   - FIXED: OpenVPN webui: TLS Reneg and Connection Retry wouldn't let 
+            you enter -1 as value.
+   - FIXED: Layout issues on the DHCP page (one in Asus code, another in Merlin code)
+   - FIXED: Beeline Corbina was unable to connect to PPTP/L2TP server due to DNS
+            issues.
+   - CHANGED: System log starts at the bottom (backported from GPL 314)
+   - CHANGED: Dual WAN is no longer enabled in regular builds - too many issues 
+              with it at this point.  Regular USB failover still works.
+
+
+3.0.0.4.260.21:
+   - NEW: Rebased on 3.0.0.4.260.  This version should
+          resolve issues with some Russian ISPs.  Note that
+          the RT-N66U build still uses the wireless driver
+          from release 220, as this seems to be the most stable
+          at this time.
+   - NEW: Option to force the router into becoming the SMB Master Browser.
+   - NEW: Option to make the router act as a WINS server.
+   - NEW: Option to control Spanning-Tree Protocol
+   - NEW: fstab custom config file
+   - FIXED: Firefox compatibility issues on the DHCP static and 
+            MAC filter name fields.
+   - FIXED: Wifi status icon wasn't accurately reporting states if they
+            were changed by a radio schedule.
+   - FIXED: QIS would report newer firmwares, potentially overwriting
+            Asuswrt-Merlin with an original Asus firmware.
+   - FIXED: Wifi LEDs would turn back on if radios were enabled while
+            in Stealth Mode (now they turn back off after a few seconds)
+   - FIXED: Webui would break if a network device had an invalid
+            NetBIOS name (such as the Sonos Dock).
+
+
+3.0.0.4.246.20:
+   - NEW: Wifi status icon will be half colored if only one radio is enabled.
+   - NEW: Wifi status icon popup will report the state of each radios.
+   - NEW: upnp custom config file for miniupnpd
+   - NEW: unmount user script
+   - NEW: led_ctrl and makemime (for use in conjunction with sendmail) applets.
+   - NEW: Implemented control for network switch LEDs (all four at once)
+   - NEW: Stealth Mode: option to disable all LEDs
+   - NEW: Added CONFIG_IP_NF_RAW and CONFIG_NETFILTER_XT_TARGET_NOTRACK modules.
+   - FIXED: Radio toggle through WPS button would be overriden by a scheduled
+            radio.  Reverted "switch" to "toggle" code to prevent this.
+   - FIXED: You couldn't disable DMZ by clearing the IP field.
+   - FIXED: You couldn't edit entered text in DHCP/MAC/etc name field
+   - FIXED: clientid passing for some ISPs requiring it (like Sky UK)
+            was broken with the DHCP client change of build 220.
+   - FIXED: No longer reboot the router three times during boot time if one 
+            of the radios is disabled by the user. (RT-N66U)
+   - FIXED: Changing the router login name to anything other than "admin"
+            would prevent radvd, ecmh and the cru script from working 
+            properly - they all assumed "admin".  Made then use
+            http_username instead (which is tied to the superuser)
+   - CHANGED: Improved SMB and vsftpd read performance by up to 30%
+
+
+3.0.0.4.246.19b:
+   - FIXED: Reverted wireless driver to build 220 version as the new 
+            one caused various connection issues for some (RT-N66U).
+
+
+3.0.0.4.246.19:
+   - NEW: Rebased on 3.0.0.4.246.  Some notable changes:
+            o New "Enhanced interference management" option under Wireless -> Professional.
+            o Improved AiCloud webui
+            o dnsmasq updated to 2.64
+
+   - NEW: Option to enable simpler share names.  When enabled, the folder
+          Share will be shared as "Share" instead of "Share (on sda1)".
+          The option can be found on the Misc tab, under USB Application.
+   - NEW: User customized config files for various services.  Those custom
+          config entries can either be appended, or completely replace the 
+          config file generated by the firmware.
+   - NEW: Added Name field to the Wireless ACL page.
+   - NEW: Added service applet to rc.  For example, "service restart_samba" will 
+          restart the Samba service.  For advanced usage/debugging only.
+   - NEW: Backported OpenSSL ASM optimization from 1.0.1, for significant performance
+          improvements in applications such as OpenVPN or SSH when using AES.
+   - NEW: Report the current CFE/Bootloader version on the Sysinfo page.
+   - FIXED: Minor tweaks to the AiCloud pages so they can fit on a 15" laptop screen
+            (some close buttons at the bottom were unreachable)
+   - FIXED: Enabling SSH access from WAN didn't work if DualWAN
+            was set to load-balancing.
+   - FIXED: Removed MAC Filter page, as it doesn't work (not compatible
+            with Parental Control).
+   - FIXED: OpenVPN Client "Username Auth only" option was broken.
+   - FIXED: Limit valid characters in a DHCP/WOL description to prevent 
+            breaking the webui by using invalid ones such as quotes.
+   - FIXED: OpenVPN Client wasn't properly applying DNS settings that
+            the server was pushing to us.
+   - FIXED: Wireless client list alignment in AP mode.
+   - CHANGED: Less strict rules when validating user-entered MAC hwaddr.
+
+
+
 3.0.0.4.220.18b:
    - NEW: Report both rx and tx rates on wifi connections
    - FIXED: Handle cases where the wireless driver returns a speed of -1
@@ -570,13 +829,13 @@ Website: http://www.lostrealm.ca/
 Github: https://github.com/RMerl/asuswrt-merlin
 Email: rmerl@lostrealm.ca
 Twitter: https://twitter.com/RMerlinDev
+Download: http://wwww.mediafire.com/asuswrt-merlin/
 
 Development news will be posted on Twitter.  You can also keep a closer eye 
 on development as it happens through the Github site.
 
-For support question, plese use the SmallNetBuilder forums whenever possible, I regularily 
-post there (in the Asus Wireless section).
-
+For support questions, please use the SmallNetBuilder forums whenever possible.  There's a 
+dedicated Asuswrt-Merlin sub-forum there, under the Asus Wireless section.
 
 Drop me a note if you are using this firmware and are enjoying it.  If you really like it and want 
 to give more than a simple "Thank you", there is also a Paypal donation button on my website.

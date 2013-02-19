@@ -11,11 +11,12 @@
 <title><#Web_Title#> - <#menu5_6_2#></title>
 <link rel="stylesheet" type="text/css" href="index_style.css"> 
 <link rel="stylesheet" type="text/css" href="form_style.css">
+<link rel="stylesheet" type="text/css" href="pwdmeter.css">
 <script language="JavaScript" type="text/javascript" src="/state.js"></script>
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
-<script type="text/javascript" language="JavaScript" src="/help.js"></script>
-<script type="text/javascript" language="JavaScript" src="/detect.js"></script>
+<script language="JavaScript" type="text/javascript" src="/help.js"></script>
+<script language="JavaScript" type="text/javascript" src="/detect.js"></script>
 <style>
 #ClientList_Block_PC{
 	border:1px outset #999;
@@ -79,6 +80,7 @@ function initial(){
 	load_dst_d_Options();
 	load_dst_h_Options();
 	document.form.http_passwd2.value = "";
+	chkPass("<% nvram_get("http_passwd"); %>", 'http_passwd');
 	if(HTTPS_support == -1){
 		$("https_tr").style.display = "none";
 		$("https_lanport").style.display = "none";
@@ -100,18 +102,22 @@ function initial(){
 		document.form.http_username.disabled = true;
 		document.getElementById('http_username').style.display = "none";
 	}
-
-//	if(wifi_hw_sw_support != -1){
-//			document.form.btn_ez_radiotoggle[0].disabled = true;
-//			document.form.btn_ez_radiotoggle[1].disabled = true;
-//			document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";
-//	}else{
-//			//document.getElementById('btn_ez_radiotoggle_tr').style.display = "";
-//			document.form.btn_ez_radiotoggle[0].disabled = true;
-//			document.form.btn_ez_radiotoggle[1].disabled = true;
-//			document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";			
-//	}
-
+	
+	if(wifi_hw_sw_support != -1){
+			document.form.btn_ez_radiotoggle[0].disabled = true;
+			document.form.btn_ez_radiotoggle[1].disabled = true;
+			document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";
+	}else{
+			document.getElementById('btn_ez_radiotoggle_tr').style.display = "";
+			//document.form.btn_ez_radiotoggle[0].disabled = true;
+			//document.form.btn_ez_radiotoggle[1].disabled = true;
+			//document.getElementById('btn_ez_radiotoggle_tr').style.display = "none";			
+	}
+	
+	if(sw_mode == 2){  // hide WPS button behavior under repeater mode
+		$('btn_ez_radiotoggle_tr').style.display = "none";	
+	}
+	
 	if(sw_mode != 1){
 		$('misc_http_x_tr').style.display ="none";
 		hideport(0);
@@ -249,7 +255,7 @@ function validForm(){
 	}
 
 	if(checkDuplicateName(document.form.http_username.value, accounts)
-			&& document.form.http_username.value != accounts[0]){
+			&& document.form.http_username.value != decodeURIComponent(accounts[0])){
 		showtext($("alert_msg1"), "<#File_Pop_content_alert_desc5#>");
 		document.form.http_username.focus();
 		document.form.http_username.select();
@@ -282,7 +288,7 @@ function validForm(){
 		return false;
 	}
 
-	if(!validate_ipaddr(document.form.log_ipaddr, 'log_ipaddr')
+	if(!validate_ipaddr_final(document.form.log_ipaddr, 'log_ipaddr')
 			|| !validate_string(document.form.ntp_server0)
 			)
 		return false;
@@ -831,7 +837,12 @@ function hideport(flag){
         <tr>
           <th width="40%"><a class="hintstyle" href="javascript:void(0);" onClick="openHint(11,4)"><#PASS_new#></a></th>
           <td>
-            <input type="password" autocapitalization="off" name="http_passwd2" onKeyPress="return is_string(this, event);" class="input_15_table" maxlength="17" />
+            <input type="password" autocapitalization="off" name="http_passwd2" onKeyPress="return is_string(this, event);" onkeyup="chkPass(this.value, 'http_passwd');" class="input_15_table" maxlength="17" />
+            &nbsp;&nbsp;
+            <div id="scorebarBorder" style="margin-left:140px; margin-top:-25px; display:none;" title="Strength of password">
+            		<div id="score">Very Weak</div>
+            		<div id="scorebar">&nbsp;</div>
+            </div>
           </td>
         </tr>
 

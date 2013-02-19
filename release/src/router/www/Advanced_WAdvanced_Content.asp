@@ -22,16 +22,37 @@ wan_nat_x = '<% nvram_get("wan_nat_x"); %>';
 wan_proto = '<% nvram_get("wan_proto"); %>';
 var flag = 0;
 var based_modelid = '<% nvram_get("productid"); %>';
+var hw_modelid = '<% nvram_get("hardware_version"); %>';
 
 <% login_state_hook(); %>
 <% wl_get_parameter(); %>
 
 var wireless = [<% wl_auth_list(); %>];	// [[MAC, associated, authorized], ...]
-										
+var mcast_rates = [
+	["HTMIX 6.5/15", "14", 0, 1],
+	["HTMIX 13/30",	 "15", 0, 1],
+	["HTMIX 19.5/45","16", 0, 1],
+	["HTMIX 13/30",	 "17", 0, 1],
+	["HTMIX 26/60",	 "18", 0, 1],
+	["HTMIX 130/144","13", 0, 1],
+	["OFDM 6",	 "4",  0, 0],
+	["OFDM 9",	 "5",  0, 0],
+	["OFDM 12",	 "7",  0, 0],
+	["OFDM 18",	 "8",  0, 0],
+	["OFDM 24",	 "9",  0, 0],
+	["OFDM 36",	 "10", 0, 0],
+	["OFDM 48",	 "11", 0, 0],
+	["OFDM 54",	 "12", 0, 0],
+	["CCK 1",	 "1",  1, 0],
+	["CCK 2",	 "2",  1, 0],
+	["CCK 5.5",	 "3",  1, 0],
+	["CCK 11",	 "6",  1, 0]
+];
+
 function initial(){
 	show_menu();
 	load_body();
-		
+	
 	if(sw_mode == "2"){
 		disableAdvFn(17);
 		change_common(document.form.wl_wme, "WLANConfig11b", "wl_wme");
@@ -42,18 +63,32 @@ function initial(){
 		$("wl_rf_enable").style.display = "none";	
 	}
 	
-	if(band5g_support == -1)	
+	if(band5g_support == -1){	
 		$("wl_unit_field").style.display = "none";
+	}	
 
-	if(Rawifi_support == -1){		//without rawifi
+	if(Rawifi_support == -1){ // BRCM == without rawifi
 		$("DLSCapable").style.display = "none";	
 		$("PktAggregate").style.display = "none";
 		$("enable_wl_multicast_forward").style.display = "";
-	}
-	else{
-		free_options(document.form.wl_mrate_x);
-		add_option(document.form.wl_mrate_x, "<#CTL_Disabled#>", 0, <% nvram_get("wl_mrate_x"); %> == 0);
-		add_option(document.form.wl_mrate_x, "Auto", 13, <% nvram_get("wl_mrate_x"); %> == 13);
+		if('<% nvram_get("wl_unit"); %>' == '1'){
+			inputCtrl(document.form.wl_noisemitigation, 0);
+		}
+	}else{
+		inputCtrl(document.form.wl_noisemitigation, 0);
+	}	
+
+	var mcast_rate = '<% nvram_get("wl_mrate_x"); %>';
+	var mcast_unit = '<% nvram_get("wl_unit"); %>';
+	//free_options(document.form.wl_mrate_x);
+	for (var i = 0; i < mcast_rates.length; i++) {
+		if (mcast_unit == '1' && mcast_rates[i][2]) // 5Ghz && CCK
+			continue;
+		if (Rawifi_support == -1 && mcast_rates[i][3]) // BCM && HTMIX
+			continue;
+		add_option(document.form.wl_mrate_x,
+			mcast_rates[i][0], mcast_rates[i][1],
+			(mcast_rate == mcast_rates[i][1]) ? 1 : 0);
 	}
 
 	if(repeater_support != -1){		//with RE mode
@@ -74,45 +109,26 @@ function initial(){
 	}	
 		
 	loadDateTime();
-
+	
 	if(power_support < 0)
 		inputHideCtrl(document.form.wl_TxPower, 0);
-	else{
-		if(document.form.wl_unit.value == 1)
-			$("TxPowerHint_5G").style.display = "";
-	}
-	
+
+	check_Timefield_checkbox();
 	control_TimeField();
+
+	if(document.form.wl0_country_code.value == "EU" && document.form.wl_unit.value == 0){
+		$("maxTxPower").innerHTML = "100";
+	}
 }
 
 function applyRule(){
-	if(power_support != -1){
-		/*
-		var wlcountry = '<% nvram_get("wl0_country_code"); %>';
-		if(wlcountry == 'EU'){
-			var maxPower = 100;
-			if(parseInt(document.form.wl_TxPower.value) > maxPower && flag < 0){
-				$("TxPowerHint").style.display = "";
-				document.form.wl_TxPower.focus();
-				flag++;
-				return false;
-			}
-		}
-		*/
-		
-		// MODELDEP
-		if(based_modelid == "RT-AC66U" || based_modelid == "RT-N66U" || based_modelid == "RT-N12HP"){
-			if(parseInt(document.form.wl_TxPower.value) > parseInt(document.form.wl_TxPower_orig.value))
-			  FormActions("start_apply.htm", "apply", "set_wltxpower;reboot", "<% get_default_reboot_time(); %>");
-		}
-	}
-
 	if(validForm()){
 		showLoading();
 		document.form.submit();
 	}
 }
 
+var errFlag=0
 function validForm(){
 	if(sw_mode != "2"){
 		if(!validate_range(document.form.wl_frag, 256, 2346)
@@ -144,15 +160,35 @@ function validForm(){
 				return false;
 	}
 		
-	if(power_support != -1){
-  		if(!validate_range(document.form.wl_TxPower, 1, 999)){
-					document.form.wl_TxPower.focus();
-					document.form.wl_TxPower.select();
-					return false;
-  		}
+	if(power_support != -1){		
+		// CE@2.4GHz
+		if(document.form.wl0_country_code.value == "EU" && document.form.wl_unit.value == 0){
+			if(document.form.wl_TxPower.value > 100 && errFlag < 2){
+				alert("Due to CE regulation, the value of TxPower cannot over 100.")
+				document.form.wl_TxPower.focus();
+				errFlag++;
+				return false;
+			}
+			else if(document.form.wl_TxPower.value > 200 && errFlag > 1)
+				document.form.wl_TxPower.value = 200;
+		}
+
+		if(!validate_range(document.form.wl_TxPower, 1, 200)){
+			document.form.wl_TxPower.value = 200;
+			document.form.wl_TxPower.focus();
+			document.form.wl_TxPower.select();
+			return false;
+		}
+
+		// MODELDEP
+		if(based_modelid == "RT-N12HP" || (based_modelid == "RT-N12" && hw_modelid == "RTN12HP-1.0.1.2")){
+		  FormActions("start_apply.htm", "apply", "set_wltxpower;reboot", "<% get_default_reboot_time(); %>");
+		}
+		else if(based_modelid == "RT-AC66U" || based_modelid == "RT-N66U"){
+			FormActions("start_apply.htm", "apply", "set_wltxpower;restart_wireless", "15");
+		}
   }		
 	
-					   
 	updateDateTime(document.form.current_page.value);	
 	return true;
 }
@@ -197,6 +233,43 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 		$('enable_time_weekend_tr').style.display="";	
 	}
 }
+function check_Timefield_checkbox(){	// To check Date checkbox checked or not and control Time field disabled or not, Jieming add at 2012/10/05
+	if(document.form.wl_radio_date_x_Mon.checked == true 
+		|| document.form.wl_radio_date_x_Tue.checked == true
+		|| document.form.wl_radio_date_x_Wed.checked == true
+		|| document.form.wl_radio_date_x_Thu.checked == true
+		|| document.form.wl_radio_date_x_Fri.checked == true	){		
+			inputCtrl(document.form.wl_radio_time_x_starthour,1);
+			inputCtrl(document.form.wl_radio_time_x_startmin,1);
+			inputCtrl(document.form.wl_radio_time_x_endhour,1);
+			inputCtrl(document.form.wl_radio_time_x_endmin,1);
+			document.form.wl_radio_time_x.disabled = false;
+	}
+	else{
+			inputCtrl(document.form.wl_radio_time_x_starthour,0);
+			inputCtrl(document.form.wl_radio_time_x_startmin,0);
+			inputCtrl(document.form.wl_radio_time_x_endhour,0);
+			inputCtrl(document.form.wl_radio_time_x_endmin,0);
+			document.form.wl_radio_time_x.disabled = true;
+			$('enable_time_week_tr').style.display ="";
+	}
+		
+	if(document.form.wl_radio_date_x_Sun.checked == true || document.form.wl_radio_date_x_Sat.checked == true){
+		inputCtrl(document.form.wl_radio_time2_x_starthour,1);
+		inputCtrl(document.form.wl_radio_time2_x_startmin,1);
+		inputCtrl(document.form.wl_radio_time2_x_endhour,1);
+		inputCtrl(document.form.wl_radio_time2_x_endmin,1);
+		document.form.wl_radio_time2_x.disabled = false;
+	}
+	else{
+		inputCtrl(document.form.wl_radio_time2_x_starthour,0);
+		inputCtrl(document.form.wl_radio_time2_x_startmin,0);
+		inputCtrl(document.form.wl_radio_time2_x_endhour,0);
+		inputCtrl(document.form.wl_radio_time2_x_endmin,0);
+		document.form.wl_radio_time2_x.disabled = true;
+		$("enable_time_weekend_tr").style.display = ""; 
+	}
+}
 </script>
 </head>
 
@@ -231,6 +304,7 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 <input type="hidden" name="wl_subunit" value="-1">
 <input type="hidden" name="wl_amsdu" value="<% nvram_get("wl_amsdu"); %>">
 <input type="hidden" name="wl_TxPower_orig" value="<% nvram_get("wl_TxPower"); %>" disabled>
+<input type="hidden" name="wl0_country_code" value="<% nvram_get("wl0_country_code"); %>" disabled>
 
 <table class="content" align="center" cellpadding="0" cellspacing="0">
 	<tr>
@@ -280,18 +354,18 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 					<tr id="enable_date_week_tr">
 			  			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3, 2);"><#WLANConfig11b_x_RadioEnableDate_itemname#> (week days)</a></th>
 			  			<td>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Mon" onChange="return changeDate();"><#date_Mon_itemdesc#>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Tue" onChange="return changeDate();"><#date_Tue_itemdesc#>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Wed" onChange="return changeDate();"><#date_Wed_itemdesc#>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Thu" onChange="return changeDate();"><#date_Thu_itemdesc#>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Fri" onChange="return changeDate();"><#date_Fri_itemdesc#>						
+							<input type="checkbox" class="input" name="wl_radio_date_x_Mon" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Mon_itemdesc#>
+							<input type="checkbox" class="input" name="wl_radio_date_x_Tue" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Tue_itemdesc#>
+							<input type="checkbox" class="input" name="wl_radio_date_x_Wed" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Wed_itemdesc#>
+							<input type="checkbox" class="input" name="wl_radio_date_x_Thu" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Thu_itemdesc#>
+							<input type="checkbox" class="input" name="wl_radio_date_x_Fri" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Fri_itemdesc#>						
 							<span id="blank_warn" style="display:none;"><#JS_Shareblanktest#></span>	
 			  			</td>
 					</tr>
-					<tr id="enable_time_week_tr">
+					<tr id="enable_time_week_tr" >
 			  			<th><a class="hintstyle"  href="javascript:void(0);" onClick="openHint(3, 3);"><#WLANConfig11b_x_RadioEnableTime_itemname#></a></th>
 			  			<td>
-			  				<input type="text" maxlength="2" class="input_3_table" name="wl_radio_time_x_starthour" onKeyPress="return is_number(this,event)" onblur="validate_timerange(this, 0);"> :
+			  				<input type="text" maxlength="2" class="input_3_table" name="wl_radio_time_x_starthour" onKeyPress="return is_number(this,event)" onblur="validate_timerange(this, 0);" > :
 							<input type="text" maxlength="2" class="input_3_table" name="wl_radio_time_x_startmin" onKeyPress="return is_number(this,event)" onblur="validate_timerange(this, 1);"> -
 							<input type="text" maxlength="2" class="input_3_table" name="wl_radio_time_x_endhour" onKeyPress="return is_number(this,event)" onblur="validate_timerange(this, 2);"> :
 							<input type="text" maxlength="2" class="input_3_table" name="wl_radio_time_x_endmin" onKeyPress="return is_number(this,event)" onblur="validate_timerange(this, 3);">
@@ -300,8 +374,8 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 					<tr id="enable_date_weekend_tr">
 			  			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3, 2);"><#WLANConfig11b_x_RadioEnableDate_itemname#> (weekend)</a></th>
 			  			<td>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Sat" onChange="return changeDate();"><#date_Sat_itemdesc#>
-							<input type="checkbox" class="input" name="wl_radio_date_x_Sun" onChange="return changeDate();"><#date_Sun_itemdesc#>					
+							<input type="checkbox" class="input" name="wl_radio_date_x_Sat" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Sat_itemdesc#>
+							<input type="checkbox" class="input" name="wl_radio_date_x_Sun" onChange="return changeDate();" onclick="check_Timefield_checkbox()"><#date_Sun_itemdesc#>					
 							<span id="blank_warn" style="display:none;"><#JS_Shareblanktest#></span>	
 			  			</td>
 					</tr>
@@ -343,28 +417,14 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 							</div>
 			  			</td>
 					</tr>
-			<!-- 2008.03 James. patch for Oleg's patch. { -->
 					<tr id="wl_mrate_select">
 						<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3, 7);"><#WLANConfig11b_MultiRateAll_itemname#></a></th>
 						<td>
 							<select name="wl_mrate_x" class="input_option" onChange="return change_common(this, 'WLANConfig11b', 'wl_mrate_x')">
 								<option value="0" <% nvram_match("wl_mrate_x", "0", "selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
-								<option value="1" <% nvram_match("wl_mrate_x", "1", "selected"); %>>1</option>
-								<option value="2" <% nvram_match("wl_mrate_x", "2", "selected"); %>>2</option>
-								<option value="3" <% nvram_match("wl_mrate_x", "3", "selected"); %>>5.5</option>
-								<option value="4" <% nvram_match("wl_mrate_x", "4", "selected"); %>>6</option>
-								<option value="5" <% nvram_match("wl_mrate_x", "5", "selected"); %>>9</option>
-								<option value="6" <% nvram_match("wl_mrate_x", "6", "selected"); %>>11</option>
-								<option value="7" <% nvram_match("wl_mrate_x", "7", "selected"); %>>12</option>
-								<option value="8" <% nvram_match("wl_mrate_x", "8", "selected"); %>>18</option>
-								<option value="9" <% nvram_match("wl_mrate_x", "9", "selected"); %>>24</option>
-								<option value="10" <% nvram_match("wl_mrate_x", "10", "selected"); %>>36</option>
-								<option value="11" <% nvram_match("wl_mrate_x", "11", "selected"); %>>48</option>
-								<option value="12" <% nvram_match("wl_mrate_x", "12", "selected"); %>>54</option>
 							</select>
 						</td>
 					</tr>
-			<!-- 2008.03 James. patch for Oleg's patch. } -->
 					<tr style="display:none;">
 			  			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3, 8);"><#WLANConfig11b_DataRate_itemname#></a></th>
 			  			<td>
@@ -492,22 +552,22 @@ function control_TimeField(){		//control time of week & weekend field when wirel
 						</td>
 					</tr>
 
+					<tr id="noiseReduction"> <!-- BRCM Only  -->
+						<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3,21);">Enhanced interference management</a></th>
+						<td>
+							<select name="wl_noisemitigation" class="input_option" onChange="">
+								<option value="0" <% nvram_match("wl_noisemitigation", "0","selected"); %>><#WLANConfig11b_WirelessCtrl_buttonname#></option>
+								<option value="1" <% nvram_match("wl_noisemitigation", "1","selected"); %>><#WLANConfig11b_WirelessCtrl_button1name#></option>
+							</select>
+						</td>
+					</tr>
+
 					<!-- RaLink Only : Original at wireless-General page By Viz 2011.08 -->
 					<tr>
 						<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 17);"><#WLANConfig11b_TxPower_itemname#></a></th>
 						<td>
 		  				<input type="text" maxlength="3" name="wl_TxPower" class="input_3_table" value="<% nvram_get("wl_TxPower"); %>" onKeyPress="return is_number(this, event);"> mW
-							<br>
-							<span id="TxPowerHint" style="display:none;">ETSI: max. 100mW for Europe, South America and APAC.</span>
-							<span id="TxPowerHint_5G" style="display:none;">
-								FCC  channel  34~48 max: 50mW for North America.
-								<br />
-								FCC  channel 149~165 max: 1000mW for North America.
-								<br />
-								ETSI max: 200mW for Europe, South America and APAC.
-								<br />
-								The real Tx power is automatically adjusted due to regional regulatory.
-							</span>
+							<br><span style="">Set the capability for transmission power. The maximum value is <span id="maxTxPower">200</span>mW and the real transmission power  will be dynamically adjusted to meet regional regulations</span>
 						</td>
 					</tr>
 

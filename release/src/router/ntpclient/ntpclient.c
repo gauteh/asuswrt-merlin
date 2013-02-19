@@ -33,6 +33,7 @@
 
 #include <bcmnvram.h>
 #include <shared.h>
+#include <shutils.h>
 #include <signal.h>
 
 #define ENABLE_DEBUG
@@ -251,22 +252,8 @@ void rfc1305print(char *data, struct ntptime *arrival)
 			exit(1);
 		}
 
-		if (get_ipv6_service() != IPV6_DISABLED)
-			notify_rc("restart_radvd");
-
-#if 0
-		if (debug) {
-			fprintf(stderr,"set time to %lu.%.6lu\n", tv_set.tv_sec, tv_set.tv_usec);
-		}
-#else
-
-		// if non_restart_upnp = 1, not to restart_upnp
-		if (is_routing_enabled() && nvram_match("non_restart_upnp" , "0"))
-			notify_rc("restart_upnp");
-
 		fprintf(stderr, "[ntpclient] set time to %lu.%.6lu\n", tv_set.tv_sec, tv_set.tv_usec);
-		system("date");
-#endif
+		eval("date");
 	}
 
 	if (debug) {
@@ -399,13 +386,6 @@ int primary_loop(int usd, int num_probes, int cycle_time)
 			fflush(stdout);
 		}
 		if (probes_sent >= num_probes && num_probes != 0) break;
-	}
-
-	nvram_set("ntp_ready", "2");
-	if (!nvram_match("router_disable", "1") && nvram_match("upnp_started", "0"))
-	{
-		nvram_set("rc_service", "restart_upnp");
-		kill(1, SIGUSR1);
 	}
 
 	return -1;
@@ -549,8 +529,9 @@ int main(int argc, char *argv[]) {
 
 		setup_transmit(usd, ntps, NTP_PORT);
 
-
 		if (!primary_loop(usd, probe_count, cycle_time)) {
+			nvram_set("ntp_ready", "1");
+			doSystem("kill -SIGTSTP `cat %s`", "/var/run/ntp.pid");
 			close(usd);
 			break;
 		}

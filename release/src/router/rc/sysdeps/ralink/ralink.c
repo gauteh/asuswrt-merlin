@@ -660,6 +660,7 @@ int gen_ralink_config(int band, int is_iNIC)
 	int j;
 	char *nv, *nvp, *b;
 	int wl_key_type[MAX_NO_MSSID];
+	int mcast_phy, mcast_mcs;
 
 	if (!is_iNIC)
 	{
@@ -2411,52 +2412,37 @@ int gen_ralink_config(int band, int is_iNIC)
 	{
 		if (!strcmp(str, "disabled"))
 		{
-			fprintf(fp, "AccessPolicy0=%d\n", 0);
-			fprintf(fp, "AccessPolicy1=%d\n", 0);
-			fprintf(fp, "AccessPolicy2=%d\n", 0);
-			fprintf(fp, "AccessPolicy3=%d\n", 0);
+			for (i = 0; i < ssid_num; i++)
+				fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
 		}
 		else if (!strcmp(str, "allow"))
 		{
-			fprintf(fp, "AccessPolicy0=%d\n", 1);
-			fprintf(fp, "AccessPolicy1=%d\n", 1);
-			fprintf(fp, "AccessPolicy2=%d\n", 1);
-			fprintf(fp, "AccessPolicy3=%d\n", 1);
+			for (i = 0; i < ssid_num; i++)
+				fprintf(fp, "AccessPolicy%d=%d\n", i, 1);
 		}
 		else if (!strcmp(str, "deny"))
 		{
-			fprintf(fp, "AccessPolicy0=%d\n", 2);
-			fprintf(fp, "AccessPolicy1=%d\n", 2);
-			fprintf(fp, "AccessPolicy2=%d\n", 2);
-			fprintf(fp, "AccessPolicy3=%d\n", 2);
+			for (i = 0; i < ssid_num; i++)
+				fprintf(fp, "AccessPolicy%d=%d\n", i, 2);
 		}
 		else
 		{
 			warning = 46;
-			fprintf(fp, "AccessPolicy0=%d\n", 0);
-			fprintf(fp, "AccessPolicy1=%d\n", 0);
-			fprintf(fp, "AccessPolicy2=%d\n", 0);
-			fprintf(fp, "AccessPolicy3=%d\n", 0);
+			for (i = 0; i < ssid_num; i++)
+				fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
 		}
 	}
 	else
 	{
 		warning = 47;
-		fprintf(fp, "AccessPolicy0=%d\n", 0);
-		fprintf(fp, "AccessPolicy1=%d\n", 0);
-		fprintf(fp, "AccessPolicy2=%d\n", 0);
-		fprintf(fp, "AccessPolicy3=%d\n", 0);
+		for (i = 0; i < ssid_num; i++)
+			fprintf(fp, "AccessPolicy%d=%d\n", i, 0);
 	}
 
 	list[0]=0;
 	list[1]=0;
 	if (nvram_invmatch(strcat_r(prefix, "macmode", tmp), "disabled"))
 	{
-#if 0
-		num = atoi(nvram_safe_get(strcat_r(prefix, "macnum_x", tmp)));
-		for (i=0;i<num;i++)
-			sprintf(list, "%s;%s", list, mac_conv(strcat_r(prefix, "maclist_x", tmp), i, macbuf));
-#else
 		nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "maclist_x", tmp)));
 		if (nv) {
 			while ((b = strsep(&nvp, "<")) != NULL) {
@@ -2468,70 +2454,11 @@ int gen_ralink_config(int band, int is_iNIC)
 			}
 			free(nv);
 		}
-#endif
 	}
 
 	// AccessControlLis0~3
-	fprintf(fp, "AccessControlList0=%s\n", list);
-	fprintf(fp, "AccessControlList1=%s\n", list);
-	fprintf(fp, "AccessControlList2=%s\n", list);
-	fprintf(fp, "AccessControlList3=%s\n", list);
-
-	fprintf(fp, "AccessPolicy4=%d\n", 0);
-	fprintf(fp, "AccessPolicy5=%d\n", 0);
-	fprintf(fp, "AccessPolicy6=%d\n", 0);
-	fprintf(fp, "AccessPolicy7=%d\n", 0);
-
-	fprintf(fp, "AccessControlList4=\n");	
-	fprintf(fp, "AccessControlList5=\n");
-	fprintf(fp, "AccessControlList6=\n");
-	fprintf(fp, "AccessControlList7=\n");
-#if 0
-	str = nvram_safe_get(strcat_r(prefix, "macmode", tmp));
-	if (str && strlen(str))
-	{
-		if (!strcmp(str, "disabled"))
-			fprintf(fp, "AccessPolicy0=%d\n", 0);
-		else if (!strcmp(str, "allow"))
-			fprintf(fp, "AccessPolicy0=%d\n", 1);
-		else if (!strcmp(str, "deny"))
-			fprintf(fp, "AccessPolicy0=%d\n", 2);
-		else
-			fprintf(fp, "AccessPolicy0=%d\n", 0);
-	}
-	else
-	{
-		warning = 48;
-		fprintf(fp, "AccessPolicy0=%d\n", 0);
-	}
-
-	list[0]=0;
-	list[1]=0;
-	if (nvram_invmatch(strcat_r(prefix, "macmode", tmp), "disabled"))
-	{
-		num = atoi(nvram_safe_get(strcat_r(prefix, "macnum_x", tmp)));
-		for (i=0;i<num;i++)
-			sprintf(list, "%s;%s", list, mac_conv(strcat_r(prefix, "maclist_x", tmp), i, macbuf));
-	}
-
-	//AccessControlList0
-	fprintf(fp, "AccessControlList0=%s\n", list+1);
-
-	fprintf(fp, "AccessPolicy1=%d\n", 0);
-	fprintf(fp, "AccessControlList1=\n");
-	fprintf(fp, "AccessPolicy2=%d\n", 0);
-	fprintf(fp, "AccessControlList2=\n");
-	fprintf(fp, "AccessPolicy3=%d\n", 0);
-	fprintf(fp, "AccessControlList3=\n");	
-	fprintf(fp, "AccessPolicy4=%d\n", 0);
-	fprintf(fp, "AccessControlList4=\n");
-	fprintf(fp, "AccessPolicy5=%d\n", 0);
-	fprintf(fp, "AccessControlList5=\n");
-	fprintf(fp, "AccessPolicy6=%d\n", 0);
-	fprintf(fp, "AccessControlList6=\n");
-	fprintf(fp, "AccessPolicy7=%d\n", 0);
-	fprintf(fp, "AccessControlList7=\n");
-#endif
+	for (i = 0; i < ssid_num; i++)
+		fprintf(fp, "AccessControlList%d=%s\n", i, list);
 
 	if (!nvram_match("sw_mode", "2") && !nvram_match(strcat_r(prefix, "mode_x", tmp), "0"))
 	{
@@ -2841,18 +2768,10 @@ int gen_ralink_config(int band, int is_iNIC)
 	fprintf(fp, "Key4Str=\n");
 
 	//IgmpSnEnable
-/*
-	str = nvram_safe_get(strcat_r(prefix, "IgmpSnEnable", tmp));
-	if (str && strlen(str))
-		fprintf(fp, "IgmpSnEnable=%d\n", atoi(str));
-	else
-	{
-		warning = 52;
-		fprintf(fp, "IgmpSnEnable=%d\n", 1);
-	}
-*/
+	fprintf(fp, "IgmpSnEnable=%d\n", 1);
+
 	/*	McastPhyMode, PHY mode for Multicast frames
-	 *	McastMcs, MCS for Multicast frames, ranges from 0 to 7
+	 *	McastMcs, MCS for Multicast frames, ranges from 0 to 15
 	 *
 	 *	MODE=1, MCS=0: Legacy CCK 1Mbps
 	 *	MODE=1, MCS=1: Legacy CCK 2Mbps
@@ -2866,104 +2785,83 @@ int gen_ralink_config(int band, int is_iNIC)
 	 * 	MODE=2, MCS=5: Legacy OFDM 36Mbps
 	 *	MODE=2, MCS=6: Legacy OFDM 48Mbps
 	 *	MODE=2, MCS=7: Legacy OFDM 54Mbps
+	 *	MODE=3, MCS=0: HTMIX 6.5/15Mbps
+	 *	MODE=3, MCS=1: HTMIX 15/30Mbps
+	 *	MODE=3, MCS=2: HTMIX 19.5/45Mbps
+	 *	MODE=3, MCS=8: HTMIX 13/30Mbps
+	 *	MODE=3, MCS=9: HTMIX 26/60Mbps
+	 *	MODE=3, MCS=10: HTMIX 39/90Mbps
 	 *	MODE=3, MCS=15: HTMIX 130/144Mbps
 	 **/
-	str = nvram_safe_get(strcat_r(prefix, "mrate_x", tmp));
-	if (str && strlen(str))
-	{
-		if (atoi(str) == 0 && !nvram_get_int("emf_enable"))	// Disable
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 0);
-//			fprintf(fp, "McastPhyMode=%d\n", 0);
-//			fprintf(fp, "McastMcs=%d\n", 0);
-		}
-#if 0
-		else if (atoi(str) == 1)	// Legacy CCK 1Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 1);
-			fprintf(fp, "McastMcs=%d\n", 0);
-		}
-		else if (atoi(str) == 2)	// Legacy CCK 2Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 1);
-			fprintf(fp, "McastMcs=%d\n", 1);
-		}
-		else if (atoi(str) == 3)	// Legacy CCK 5.5Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 1);
-			fprintf(fp, "McastMcs=%d\n", 2);
-		}
-		else if (atoi(str) == 4)	// Legacy CCK 11Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 1);
-			fprintf(fp, "McastMcs=%d\n", 3);
-		}
-		else if (atoi(str) == 5)	// Legacy OFDM 6Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 0);
-		}
-		else if (atoi(str) == 6)	// Legacy OFDM 9Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 1);
-		}
-		else if (atoi(str) == 7)	// Legacy OFDM 12Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 2);
-		}
-		else if (atoi(str) == 8)	// Legacy OFDM 18Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 3);
-		}
-		else if (atoi(str) == 9)	// Legacy OFDM 24Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 4);
-		}
-		else if (atoi(str) == 10)	// Legacy OFDM 36Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 5);
-		}
-		else if (atoi(str) == 11)	// Legacy OFDM 48Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 6);
-		}
-		else if (atoi(str) == 12)	// Legacy OFDM 54Mbps
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 2);
-			fprintf(fp, "McastMcs=%d\n", 7);
-		}
-//		else if (atoi(str) == 13)	// HTMIX 130/144Mbps => Auto
-#endif
-		else
-		{
-			fprintf(fp, "IgmpSnEnable=%d\n", 1);
-			fprintf(fp, "McastPhyMode=%d\n", 3);
-			fprintf(fp, "McastMcs=%d\n", 15);
-		}
+	i = nvram_get_int(strcat_r(prefix, "mrate_x", tmp));
+next_mrate:
+	switch (i++) {
+	case 1: /* Legacy CCK 1Mbps */
+		mcast_phy = 1, mcast_mcs = 0;
+		break;
+	case 2: /* Legacy CCK 2Mbps */
+		mcast_phy = 1, mcast_mcs = 1;
+		break;
+	case 3: /* Legacy CCK 5.5Mbps */
+		mcast_phy = 1, mcast_mcs = 2;
+		break;
+	case 4: /* Legacy OFDM 6Mbps */
+		mcast_phy = 2, mcast_mcs = 0;
+		break;
+	case 5: /* Legacy OFDM 9Mbps */
+		mcast_phy = 2, mcast_mcs = 1;
+		break;
+	case 6: /* Legacy CCK 11Mbps */
+		mcast_phy = 1, mcast_mcs = 3;
+		break;
+	case 7: /* Legacy OFDM 12Mbps */
+		mcast_phy = 2, mcast_mcs = 2;
+		break;
+	case 8: /* Legacy OFDM 18Mbps */
+		mcast_phy = 2, mcast_mcs = 3;
+		break;
+	case 9: /* Legacy OFDM 24Mbps */
+		mcast_phy = 2, mcast_mcs = 4;
+		break;
+	case 10: /* Legacy OFDM 36Mbps */
+		mcast_phy = 2, mcast_mcs = 5;
+		break;
+	case 11: /* Legacy OFDM 48Mbps */
+		mcast_phy = 2, mcast_mcs = 6;
+		break;
+	case 12: /* Legacy OFDM 54Mbps */
+		mcast_phy = 2, mcast_mcs = 7;
+		break;
+	case 13: /* HTMIX 130/144Mbps */
+		mcast_phy = 3, mcast_mcs = 15;
+		break;
+	case 14: /* HTMIX HTMIX 6.5/15Mbps */
+		mcast_phy = 3, mcast_mcs = 0;
+		break;
+	case 15: /* HTMIX 13/30Mbps */
+		mcast_phy = 3, mcast_mcs = 1;
+		break;
+	case 16: /* HTMIX 19.5/45Mbps */
+		mcast_phy = 3, mcast_mcs = 2;
+		break;
+	case 17: /* HTMIX 13/30Mbps 2S */
+		mcast_phy = 3, mcast_mcs = 8;
+		break;
+	case 18: /* HTMIX 26/60Mbps 2S */
+		mcast_phy = 3, mcast_mcs = 9;
+		break;
+	case 19: /* HTMIX 36/90Mbps 2S */
+		mcast_phy = 3, mcast_mcs = 10;
+		break;
+	default: /* Disable */
+		mcast_phy = 0, mcast_mcs = 0;
+		break;
 	}
-	else
-	{
-		fprintf(fp, "IgmpSnEnable=%d\n", 0);
-		warning = 53;
-	}
+	/* No CCK for 5Ghz band */
+	if (band && mcast_phy == 1)
+		goto next_mrate;
+	fprintf(fp, "McastPhyMode=%d\n", mcast_phy);
+	fprintf(fp, "McastMcs=%d\n", mcast_mcs);
 
 	if (warning)
 	{
@@ -2975,27 +2873,6 @@ int gen_ralink_config(int band, int is_iNIC)
 	return 0;
 }
 
-static int
-wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
-{
-	int ret = 0;
- 	int s;
-
-	/* open socket to kernel */
-	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("socket");
-		return errno;
-	}
-
-	/* do it */
-	strncpy(pwrq->ifr_name, ifname, IFNAMSIZ);
-	if ((ret = ioctl(s, cmd, pwrq)) < 0)
-		perror(pwrq->ifr_name);
-
-	/* cleanup */
-	close(s);
-	return ret;
-}
 
 PAIR_CHANNEL_FREQ_ENTRY ChannelFreqTable[] = {
 	//channel Frequency

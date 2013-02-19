@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -17,6 +17,8 @@
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" language="JavaScript" src="/detect.js"></script>
+<script type="text/javascript" language="JavaScript" src="/merlin.js"></script>
+
 <script type="text/javascript" src="/jquery.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script>
@@ -244,24 +246,6 @@ function del_Row(r){
 	if(vpn_clientlist_array == "")
 		vpn_clientlist();
 }
-
-
-function setRadioValue(obj,val) {
-	for (var i=0; i<obj.length; i++) {
-		if (obj[i].value==val)
-			obj[i].checked = true;
-	}
-}
-
-
-function getRadioValue(obj) {
-	for (var i=0; i<obj.length; i++) {
-		if (obj[i].checked)
-			return obj[i].value;
-	}
-	return 0;
-}
-
 
 function applyRule(){
 
@@ -609,7 +593,7 @@ function change_vpn_unit(val){
 					<tr>
 						<th>TLS Renegotiation Time<br><i>(in seconds, -1 for default)</th>
 						<td>
-							<input type="text" maxlength="5" class="input_6_table" name="vpn_server_reneg" onKeyPress="return is_number(this,event);" onblur="validate_number_range(this, -1, 2147483647)" value="<% nvram_get("vpn_server_reneg"); %>">
+							<input type="text" maxlength="5" class="input_6_table" name="vpn_server_reneg" onblur="validate_range(this, -1, 2147483647)" value="<% nvram_get("vpn_server_reneg"); %>">
 						</td>
 					</tr>
 
@@ -688,7 +672,7 @@ function change_vpn_unit(val){
 						</thead>
 						<tr>
 						<td colspan="2">
-							<textarea rows="8" class="textarea_ssh_table" name="vpn_server_custom" cols="55" maxlength="1024"><% nvram_clean_get("vpn_server_custom"); %></textarea>
+							<textarea rows="8" class="textarea_ssh_table" name="vpn_server_custom" cols="55" maxlength="15000"><% nvram_clean_get("vpn_server_custom"); %></textarea>
 						</td>
 					</tr>
 

@@ -138,7 +138,7 @@ function done_validating(action){
 <input type="hidden" name="group_id" value="">
 <input type="hidden" name="modified" value="0">
 <input type="hidden" name="action_mode" value="apply">
-<input type="hidden" name="action_script" value="restart_ftpsamba">
+<input type="hidden" name="action_script" value="restart_ftpsamba;restart_dnsmasq">
 <input type="hidden" name="action_wait" value="5">
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
@@ -215,7 +215,29 @@ function done_validating(action){
                                                 <input type="text" name="st_samba_workgroup" class="input_32_table" maxlength="32" value="<% nvram_get("st_samba_workgroup"); %>">
                                         </td>
                                 </tr>
-                                
+
+				<tr>
+					<th>Simpler share naming<br><i>(without the disk name)</i></th>
+					<td>
+						<input type="radio" name="smbd_simpler_naming" class="input" value="1" <% nvram_match_x("", "smbd_simpler_naming", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="smbd_simpler_naming" class="input" value="0" <% nvram_match_x("", "smbd_simpler_naming", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+
+				<tr>
+					<th>Force as Master Browser</i></th>
+					<td>
+						<input type="radio" name="smbd_master" class="input" value="1" <% nvram_match_x("", "smbd_master", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="smbd_master" class="input" value="0" <% nvram_match_x("", "smbd_master", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+					<th>Set as WINS server</i></th>
+					<td>
+						<input type="radio" name="smbd_wins" class="input" value="1" <% nvram_match_x("", "smbd_wins", "1", "checked"); %>><#checkbox_Yes#>
+						<input type="radio" name="smbd_wins" class="input" value="0" <% nvram_match_x("", "smbd_wins", "0", "checked"); %>><#checkbox_No#>
+					</td>
+				</tr>
+
                                 <tr>
                                         <th>
                                         		<a class="hintstyle" href="javascript:void(0);" onClick="openHint(17,9);"><#ShareNode_FTPLANG_itemname#></a>

@@ -14,9 +14,44 @@
 <script type="text/javascript">
 <% start_autodet(); %> // initial QIS detecting process.
 <% wanlink(); %>
+var hw_ver = '<% nvram_get("hardware_version"); %>';
 function QKinternettype_load_body(){
 	parent.document.title = "<#Web_Title#> - Welcome!";
 	parent.set_step("t0");
+		
+	var check_desc1 = "<#QIS_welcome_feature1#>";	
+	var check_desc2 = "<#QIS_welcome_feature2#>";	
+	var check_desc3 = "<#QIS_welcome_feature3#>";	
+	var check_desc4 = "<#QIS_welcome_feature4#>";	
+		
+	if(hw_ver.search("RTN12") != -1){	//MODELDEP : RT-N12
+			var desc1_split = check_desc1.split("#ZVSPLITVZ#");
+			var desc2_split = check_desc2.split("#ZVSPLITVZ#");
+			var desc3_split = check_desc3.split("#ZVSPLITVZ#");
+			var desc4_split = check_desc4.split("#ZVSPLITVZ#");						
+			
+			if( hw_ver.search("RTN12HP") != -1 	//RT-N12HP
+					&& check_desc1.split("#ZVSPLITVZ#").length == 2
+					&& check_desc2.split("#ZVSPLITVZ#").length == 2
+					&& check_desc3.split("#ZVSPLITVZ#").length == 2
+					&& check_desc4.split("#ZVSPLITVZ#").length == 2){
+							document.getElementById("Productdesc_1").innerHTML = desc1_split[1];
+							document.getElementById("Productdesc_2").innerHTML = desc2_split[1];
+							document.getElementById("Productdesc_3").innerHTML = desc3_split[1];
+							document.getElementById("Productdesc_4").innerHTML = desc4_split[1];
+			}else{	// rest of RT-N12
+							document.getElementById("Productdesc_1").innerHTML = desc1_split[0];
+							document.getElementById("Productdesc_2").innerHTML = desc2_split[0];
+							document.getElementById("Productdesc_3").innerHTML = desc3_split[0];
+							document.getElementById("Productdesc_4").innerHTML = desc4_split[0];
+			}	
+	}else{
+		document.getElementById("Productdesc_1").innerHTML = check_desc1;
+		document.getElementById("Productdesc_2").innerHTML = check_desc2;
+		document.getElementById("Productdesc_3").innerHTML = check_desc3;
+		document.getElementById("Productdesc_4").innerHTML = check_desc4;
+	}	
+	
 	document.getElementById("btn_next_step").focus();
 }
 
@@ -117,23 +152,21 @@ function submitenter(myfield,e)
 		<div style="margin:5px;"><img style="width: 720px; *width: 710px; height: 2px;" src="/images/New_ui/export/line_export.png"></div>
 <br/>
 
-<table style="margin-top:-20px;margin-left:20px;" width="98%" border=0 align="center" cellpadding="5" cellspacing="0">
+<table style="margin-top:-40px;margin-left:20px;" width="98%" border=0 align="center" cellpadding="5" cellspacing="0">
 	<tr>
-		<td width="50%">
-			<div id="productDesc" style="font-style:italic;">
-				<ul>
-					<p style="font-size:20px;font-weight:bolder;margin-bottom:15px;"><#statusTitle_System#></p>
-					<li style="line-height:25px;"><#QIS_welcome_feature1#>
-					<li style="line-height:25px;"><#QIS_welcome_feature2#>
-					<li style="line-height:25px;"><#QIS_welcome_feature3#>
-					<li style="line-height:25px;"><#QIS_welcome_feature4#>
+		<td width="55%" colspan="2">
+			<div id="productDesc" style="font-style:italic;">				
+				<p style="font-size:20px;font-weight:bolder;margin-bottom:15px;"><#statusTitle_System#></p>
+				<ul>		
+					<li style="line-height:25px;" id="Productdesc_1"></li>
+					<li style="line-height:25px;" id="Productdesc_2"></li>
+					<li style="line-height:25px;" id="Productdesc_3"></li>
+					<li style="line-height:25px;" id="Productdesc_4"></li>
 				</ul>	
 			</div>
 		</td>
 
-		<td width="5%"></td>
-
-		<td width="45%">
+		<td width="45%" height="394">
 			<img id="producticon" src="/images/Model_producticon.png">
 			<div id="wan_unplug" style="display:none">
 				<br>
@@ -151,17 +184,18 @@ function submitenter(myfield,e)
 
 	<tr>
 		<td colspan="3">
-			<p class="QISGeneralFont" style="margin-top:50px;*margin-top:0px;margin-left:40px;"><#QIS_welcome_desc1#></p>
+			<p class="QISGeneralFont" style="margin-left:40px;"><#QIS_welcome_desc1#></p>
 		</td>
 	</tr>
 
 	<tr>
-		<td colspan="3">
-			<div class="apply_gen" id="applyBtn" style="margin-top:10px;*margin-top:0px;">
-				<input class="button_gen" id="btn_next_step" type="button" value="<#CTL_next#>" onclick="update_wan_info();">
-				<img id="loadingIcon" style="display:none;" src="/images/InternetScan.gif"></span>
-				<input id="ManualBtn" class="button_gen_long" type="button" value="<#Manual_Setting_btn#>" style="display:none;" onclick="submitForm(0)">
-			</div>
+		<td colspan="2" align="right">
+			<input class="button_gen" id="btn_next_step" type="button" value="<#CTL_next#>" onclick="update_wan_info();">
+			<img id="loadingIcon" style="display:none;" src="/images/InternetScan.gif">
+		</td>
+		<td>			
+				<input id="ManualBtn" class="button_gen_long" type="button" value="<#Manual_Setting_btn#>" style="display:none;white-space:normal;" onclick="submitForm(0)">
+		</td>			
 		</td>
 	</tr>	
 </table>

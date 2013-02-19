@@ -29,6 +29,7 @@
 //version.c
 extern const char *rt_version;
 extern const char *rt_serialno;
+extern const char *rt_extendno;
 extern const char *rt_buildname;
 extern const char *rt_buildinfo;
 
@@ -55,12 +56,12 @@ enum {
 
 #ifndef RTF_UP
 /* Keep this in sync with /usr/src/linux/include/linux/route.h */
-#define RTF_UP          0x0001  /* route usable                 */
-#define RTF_GATEWAY     0x0002  /* destination is a gateway     */
-#define RTF_HOST        0x0004  /* host entry (net otherwise)   */
-#define RTF_REINSTATE   0x0008  /* reinstate route after tmout  */
-#define RTF_DYNAMIC     0x0010  /* created dyn. (by redirect)   */
-#define RTF_MODIFIED    0x0020  /* modified dyn. (by redirect)  */
+#define RTF_UP		0x0001  /* route usable			*/
+#define RTF_GATEWAY     0x0002  /* destination is a gateway	*/
+#define RTF_HOST	0x0004  /* host entry (net otherwise)	*/
+#define RTF_REINSTATE   0x0008  /* reinstate route after tmout	*/
+#define RTF_DYNAMIC     0x0010  /* created dyn. (by redirect)	*/
+#define RTF_MODIFIED    0x0020  /* modified dyn. (by redirect)	*/
 #endif
 #ifndef RTF_DEFAULT
 #define	RTF_DEFAULT	0x00010000	/* default - learned via ND	*/
@@ -180,14 +181,13 @@ extern void file_unlock(int lockfd);
 // id.c
 enum {
 	MODEL_UNKNOWN,
-#ifdef RTCONFIG_RALINK
-	MODEL_EAN66,	
-	MODEL_RTN56U,
-	MODEL_RTN13U,
-#ifdef RTCONFIG_DSL
 	MODEL_DSLN55U,
-#endif
-#endif
+	MODEL_EAN66,
+	MODEL_RTN13U,
+	MODEL_RTN36U3,
+	MODEL_RTN56U,
+	MODEL_RTN65U,
+	MODEL_RTN67U,
 	MODEL_RTN12,
 	MODEL_RTN12B1,
 	MODEL_RTN12C1,
@@ -199,7 +199,7 @@ enum {
 	MODEL_RTN66U,
 	MODEL_RTAC66U,
 	MODEL_RTN10U,
-	MODEL_RTN10D,
+	MODEL_RTN10D1,
 	MODEL_GENERIC
 };
 
@@ -242,6 +242,7 @@ enum {
 extern int check_hw_type(void);
 //	extern int get_hardware(void) __attribute__ ((weak, alias ("check_hw_type")));
 extern int get_model(void);
+extern char *get_modelid(int model);
 extern int supports(unsigned long attr);
 
 // pids.c
@@ -251,6 +252,7 @@ extern int pids(char *appname);
 extern char *psname(int pid, char *buffer, int maxlen);
 extern int pidof(const char *name);
 extern int killall(const char *name, int sig);
+extern int ppid(int pid);
 
 
 // files.c
@@ -289,6 +291,7 @@ extern int f_wait_notexists(const char *name, int max);
 #define LED_WAN				6
 #define LED_2G				7
 #define LED_5G				8
+#define LED_SWITCH			20
 
 #define	LED_OFF				0
 #define	LED_ON				1
@@ -328,5 +331,23 @@ extern void config8367m(int argc, char *argv[]);
 // file.c
 extern int check_if_file_exist(const char *file);
 extern int check_if_dir_exist(const char *file);
+extern int check_if_dir_writable(const char *dir);
+
+/* misc.c */
+extern char *get_logfile_path(void);
+extern char *get_syslog_fname(unsigned int idx);
+#if defined(RTCONFIG_SSH) || defined(RTCONFIG_HTTPS)
+extern int nvram_get_file(const char *key, const char *fname, int max);
+extern int nvram_set_file(const char *key, const char *fname, int max);
+#endif
+extern int free_caches(const char *clean_mode, const int clean_time, const unsigned int threshold);
+extern unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long *rx, unsigned long *tx, char *ifname_desc2, unsigned long *rx2, unsigned long *tx2);
+extern char *get_productid();
+
+/* notify_rc.c */
+extern void notify_rc(const char *event_name);
+extern void notify_rc_after_wait(const char *event_name);
+extern void notify_rc_after_period_wait(const char *event_name, int wait);
+extern void notify_rc_and_wait(const char *event_name);
 
 #endif

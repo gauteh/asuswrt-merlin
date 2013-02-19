@@ -28,6 +28,8 @@
 #include "disk_initial.h"
 #include "disk_share.h"
 
+#include <linux/version.h>
+
 #define SAMBA_CONF "/etc/smb.conf"
 
 int
@@ -116,6 +118,7 @@ int check_existed_share(const char *string){
 
 int main(int argc, char *argv[]) {
 	FILE *fp;
+	char *nv;
 	int n=0;
 	char *p_computer_name = NULL;
 	disk_info_t *follow_disk, *disks_info = NULL;
@@ -196,9 +199,23 @@ int main(int argc, char *argv[]) {
 	fprintf(fp, "strict allocate = No\n");		// ASUS add
 //	fprintf(fp, "mangling method = hash2\n");	// ASUS add
 	fprintf(fp, "bind interfaces only = yes\n");	// ASUS add
-	fprintf(fp, "interfaces = lo br0 %s\n", (!nvram_match("sw_mode", "3") ? nvram_safe_get("wan0_ifname") : ""));
+	fprintf(fp, "interfaces = lo br0 %s\n", ( ( (!nvram_match("sw_mode", "3") && !nvram_match("sw_mode", "1")) || (!strcmp(nvram_safe_get("smbd_bind_wan"), "1")) ) ? nvram_safe_get("wan0_ifname") : "") );
 	//	fprintf(fp, "dns proxy = no\n");				// J--
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
+	fprintf(fp, "use sendfile = no\n");
+#else
 	fprintf(fp, "use sendfile = yes\n");
+#endif
+	if (!strcmp(nvram_safe_get("smbd_wins"), "1")) {
+		fprintf(fp, "wins support = yes\n");
+	}
+
+	if (!strcmp(nvram_safe_get("smbd_master"), "1")) {
+		fprintf(fp, "os level = 255\n");
+		fprintf(fp, "domain master = yes\n");
+		fprintf(fp, "local master = yes\n");
+		fprintf(fp, "preferred master = yes\n");
+	}
 
 //	fprintf(fp, "domain master = no\n");				// J++
 //	fprintf(fp, "wins support = no\n");				// J++
@@ -276,7 +293,11 @@ int main(int argc, char *argv[]) {
 							samba_right = DEFAULT_SAMBA_RIGHT;
 						
 						if(samba_right > 0){
-							fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+							if (!strcmp(nvram_safe_get("smbd_simpler_naming"), "1")) {
+								fprintf(fp, "[%s]\n", folder_list[n]);
+							} else {
+								fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+							}
 							fprintf(fp, "comment = %s's %s in %s\n", mount_folder, folder_list[n], follow_disk->tag);
 							fprintf(fp, "path = %s/%s\n", follow_partition->mount_point, folder_list[n]);
 							if(samba_right == 3)
@@ -323,7 +344,11 @@ int main(int argc, char *argv[]) {
 						fprintf(fp, "path = %s\n", follow_partition->mount_point);
 					}
 					else{
-						fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+						if (!strcmp(nvram_safe_get("smbd_simpler_naming"), "1")) {
+							fprintf(fp, "[%s]\n", folder_list[n]);
+						} else {
+							fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+						}
 						fprintf(fp, "comment = %s's %s in %s\n", mount_folder, folder_list[n], follow_disk->tag);
 						fprintf(fp, "path = %s/%s\n", follow_partition->mount_point, folder_list[n]);
 					}
@@ -434,7 +459,11 @@ int main(int argc, char *argv[]) {
 				for (n = 0; n < sh_num; ++n) {
 					int i, first;
 					
-					fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+					if (!strcmp(nvram_safe_get("smbd_simpler_naming"), "1")) {
+						fprintf(fp, "[%s]\n", folder_list[n]);
+					} else {
+						fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
+					}
 					fprintf(fp, "comment = %s's %s in %s\n", mount_folder, folder_list[n], follow_disk->tag);
 					fprintf(fp, "path = %s/%s\n", follow_partition->mount_point, folder_list[n]);
 					
@@ -511,8 +540,23 @@ int main(int argc, char *argv[]) {
 	}
 	
 confpage:
-	if(fp != NULL)
+	if(fp != NULL) {
+
+		if (check_if_file_exist("/jffs/configs/smb.conf.add")) {
+			char *addendum = read_whole_file("/jffs/configs/smb.conf.add");
+			if (addendum) {
+				fwrite(addendum, 1, strlen(addendum), fp);
+				free(addendum);
+			}
+
+        	}
 		fclose(fp);
+
+		if (check_if_file_exist("/jffs/configs/smb.conf")) {
+			eval("cp","/jffs/configs/smb.conf",SAMBA_CONF,NULL);
+		}
+	}
+
 	free_disk_data(&disks_info);
 	return 0;
 }

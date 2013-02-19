@@ -28,6 +28,9 @@ var wireless = [<% wl_auth_list(); %>];	// [[MAC, associated, authorized], ...]
 <% login_state_hook(); %>
 <% wl_get_parameter(); %>
 
+wl_channel_list_2g = '<% channel_list_2g(); %>';
+wl_channel_list_5g = '<% channel_list_5g(); %>';
+
 function initial(){
 	show_menu();	
 	load_body();	
@@ -125,6 +128,9 @@ function applyRule(){
 		
 		if(auth_mode == "wpa" || auth_mode == "wpa2" || auth_mode == "wpawpa2" || auth_mode == "radius")
 			document.form.next_page.value = "/Advanced_WSecurity_Content.asp";
+			
+		if(document.form.wl_nmode_x.value == "1" && "<% nvram_get("wl_unit"); %>" == "0")
+			document.form.wl_gmode_protection.value = "off";
 		
 		/*  Viz 2012.08.15 seems ineeded
 		inputCtrl(document.form.wl_crypto, 1);
@@ -355,9 +361,7 @@ function clean_input(obj){
 				<tr id="wl_channel_field">
 					<th><a id="wl_channel_select" class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 3);"><#WLANConfig11b_Channel_itemname#></a></th>
 					<td>
-				 		<select name="wl_channel" class="input_option" onChange="return change_common(this, 'WLANConfig11b', 'wl_channel')">
-							<% select_channel("WLANConfig11b"); %>
-				 		</select>
+				 		<select name="wl_channel" class="input_option" onChange="return change_common(this, 'WLANConfig11b', 'wl_channel')"></select>
 					</td>
 			  </tr>
 			  
@@ -412,7 +416,7 @@ function clean_input(obj){
 			  	<tr>
 					<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 7);"><#WLANConfig11b_x_PSKKey_itemname#></a></th>
 					<td>
-				  		<input type="text" name="wl_wpa_psk" maxlength="65" class="input_32_table" value="<% nvram_get("wl_wpa_psk"); %>" onClick="clean_input(this)">
+				  		<input type="text" name="wl_wpa_psk" maxlength="64" class="input_32_table" value="<% nvram_get("wl_wpa_psk"); %>" onClick="clean_input(this)">
 					</td>
 			  	</tr>
 			  		  

@@ -321,9 +321,6 @@ function validForm(){
 	if(!validate_range(document.form.dhcp_lease, 120, 604800))
 		return false;
 	
-	if(!validate_ipaddr(document.form.dhcp_wins_x, 'dhcp_wins_x'))
-		return false;
-	
 	return true;
 }
 
@@ -559,6 +556,14 @@ function check_vpn(){		//true: (DHCP ip pool & static ip ) conflict with VPN cli
 				  <input type="radio" value="0" name="dhcp_enable_x" class="content_input_fd" onClick="return change_common_radio(this, 'LANHostConfig', 'dhcp_enable_x', '0')" <% nvram_match("dhcp_enable_x", "0", "checked"); %>><#checkbox_No#>
 				</td>
 			  </tr>
+
+			  <tr>
+				<th>Log DHCP queries</a></th>
+				<td>
+				  <input type="radio" value="1" name="dhcpd_querylog" class="content_input_fd" onClick="return change_common_radio(this, 'LANHostConfig', 'dhcpd_querylog', '1')" <% nvram_match("dhcpd_querylog", "1", "checked"); %>><#checkbox_Yes#>
+				  <input type="radio" value="0" name="dhcpd_querylog" class="content_input_fd" onClick="return change_common_radio(this, 'LANHostConfig', 'dhcpd_querylog', '0')" <% nvram_match("dhcpd_querylog", "0", "checked"); %>><#checkbox_No#>
+				</td>
+			  </tr>
 			  
 			  <tr>
 				<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,2);"><#LANHostConfig_DomainName_itemname#></a></th>
@@ -626,7 +631,7 @@ function check_vpn(){		//true: (DHCP ip pool & static ip ) conflict with VPN cli
 
 		  	<tr>
      			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,9);"><#LANHostConfig_ManualDHCPEnable_itemname#></a></th>
-					<td colspan="2" style="text-align:left;">
+					<td>
           	<input type="radio" value="1" name="dhcp_static_x"  onclick="return change_common_radio(this, 'LANHostConfig', 'dhcp_static_x', '1')" <% nvram_match("dhcp_static_x", "1", "checked"); %> /><#checkbox_Yes#>
       		  <input type="radio" value="0" name="dhcp_static_x"  onclick="return change_common_radio(this, 'LANHostConfig', 'dhcp_static_x', '0')" <% nvram_match("dhcp_static_x", "0", "checked"); %> /><#checkbox_No#>
       		</td>
@@ -636,7 +641,7 @@ function check_vpn(){		//true: (DHCP ip pool & static ip ) conflict with VPN cli
 			<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable_table" style="margin-top:8px;">
 			  	<thead>
 			  		<tr>
-						<td colspan="3" id="GWStatic"><#LANHostConfig_ManualDHCPList_groupitemdesc#></td><!--Viz hold on this : &nbsp;&nbsp;(<#List_limit#> 32)-->
+						<td colspan="4" id="GWStatic"><#LANHostConfig_ManualDHCPList_groupitemdesc#></td><!--Viz hold on this : &nbsp;&nbsp;(<#List_limit#> 32)-->
 			  		</tr>
 			  	</thead>
 
@@ -658,7 +663,7 @@ function check_vpn(){		//true: (DHCP ip pool & static ip ) conflict with VPN cli
             				<input type="text" class="input_15_table" maxlength="15" name="dhcp_staticip_x_0" onkeypress="return is_ipaddr(this,event)">
             			</td>
             			<td width="27%">
-					<input type="text" class="input_15_table" maxlenght="15" name="dhcp_staticname_x_0">
+					<input type="text" class="input_15_table" maxlenght="15" onkeypress="return is_alphanum(this,event);" name="dhcp_staticname_x_0">
 				</td>
 				<td width="19%">
 										<div> 

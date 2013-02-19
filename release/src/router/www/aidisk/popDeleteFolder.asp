@@ -36,22 +36,22 @@ if(navigator.userAgent.search("MSIE") == -1)
 function submit(){
 	$("pool").value = PoolDevice;
 	$("folder").value = selectedFolder;
-	if(parent.document.form.current_page.value != "mediaserver.asp" && parent.document.form.current_page.value != "cloud_sync.asp")
+	if(parent.document.form.current_page.value != "mediaserver.asp" && parent.document.form.current_page.value != "Advanced_AiDisk_NFS.asp" && parent.document.form.current_page.value != "Tools_OtherSettings.asp" && parent.document.form.current_page.value != "cloud_sync.asp")
 		parent.showLoading();
 			
 	document.deleteFolderForm.submit();
 	parent.hidePop("apply");
-	setTimeout(" ",2000);
-	if(parent.document.form.current_page.value == "mediaserver.asp" || parent.document.form.current_page.value == "cloud_sync.asp"){
+	setTimeout(" ",5000);
+	if(parent.document.form.current_page.value == "mediaserver.asp" || parent.document.form.current_page.value == "Advanced_AiDisk_NFS.asp" || parent.document.form.current_page.value == "Tools_OtherSettings.asp" || parent.document.form.current_page.value == "cloud_sync.asp"){
 		if(delete_flag == 1){
 			parent.FromObject = parent.document.aidiskForm.layer_order.value.substring(0,3);
-			setTimeout(" ",2000);
+			setTimeout(" ",3000);
 			parent.get_layer_items(parent.document.aidiskForm.layer_order.value.substring(0,3));
 			delete_flag = 0;
 		}	
 		else{
 			parent.FromObject = parent.document.aidiskForm.layer_order.value.substring(0,5);
-			setTimeout(" ",2000);
+			setTimeout(" ",3000);
 			parent.get_layer_items(parent.document.aidiskForm.layer_order.value.substring(0,5));				
 		}
 	}

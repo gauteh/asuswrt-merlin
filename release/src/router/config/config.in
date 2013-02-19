@@ -164,6 +164,11 @@ config RTCONFIG_SAMBA3
 	depends on RTCONFIG_SAMBASRV
 	default n
 
+config RTCONFIG_NFS 
+	bool "NFS Support" 
+	depends on RTCONFIG_USB
+	default n
+
 config RTCONFIG_USB_EXTRAS
 	bool "Additional modules and utilities"
 	depends on RTCONFIG_USB
@@ -171,6 +176,11 @@ config RTCONFIG_USB_EXTRAS
 
 config RTCONFIG_NTFS
 	bool "NTFS Support"
+	depends on RTCONFIG_USB
+	default n
+
+config RTCONFIG_DISK_MONITOR
+	bool "Disk monitor Support"
 	depends on RTCONFIG_USB
 	default n
 
@@ -262,7 +272,11 @@ config RTCONFIG_SFP
 	default n
 
 config RTCONFIG_4M_SFP
-	bool "Small Footprint: 4MB"
+	bool "Small Footprint: 4MB Flash"
+	default n
+
+config RTCONFIG_16M_RAM_SFP
+	bool "Small Footprint: 16MB RAM"
 	default n
 
 config RTCONFIG_GROCTRL
@@ -292,3 +306,8 @@ config RTCONFIG_ISP_METER
 config RTCONFIG_NVRAM_64K
 	bool "NVRAM_64K"
 	default n
+
+config RTCONFIG_DUAL_TRX
+        bool "DUAL_TRX"
+        default n
+

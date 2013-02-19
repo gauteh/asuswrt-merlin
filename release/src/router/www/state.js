@@ -15,6 +15,7 @@ var wan_proto = "";
 var test_page = 0;
 var testEventID = "";
 var httpd_dir = "/cifs1"
+var hw_ver = '<% nvram_get("hardware_version"); %>';
 
 // for detect if the status of the machine is changed. {
 var wanstate = -1;
@@ -88,40 +89,40 @@ function show_banner(L3){// L3 = The third Level of Menu
 	banner_code +='</div>\n';
 	banner_code +='<table width="998" border="0" align="center" cellpadding="0" cellspacing="0" class="statusBar">\n';
 	banner_code +='<tr>\n';
-  banner_code +='<td background="images/New_ui/midup_bg.png" height="179" valign="top"><table width="764" border="0" cellpadding="0" cellspacing="0" height="12px" style="margin-left:230px;">\n';
-  banner_code +='<tbody><tr>\n';
+	banner_code +='<td background="images/New_ui/midup_bg.png" height="179" valign="top"><table width="764" border="0" cellpadding="0" cellspacing="0" height="30px" style="margin-left:230px;">\n';
+	banner_code +='<tbody><tr>\n';
  	banner_code +='<td valign="center" class="titledown" width="auto">';
 
 	// dsl does not support operation mode
 	if (dsl_support	== -1) {
-  banner_code +='<span style="font-family:Verdana, Arial, Helvetica, sans-serif;"><#menu5_6_1_title#>:</sapn><a href="/Advanced_OperationMode_Content.asp" style="color:white"><span id="sw_mode_span" class="title_link"></span></a>\n';
+		banner_code +='<span style="font-family:Verdana, Arial, Helvetica, sans-serif;"><#menu5_6_1_title#>:</sapn><a href="/Advanced_OperationMode_Content.asp" style="color:white"><span id="sw_mode_span" class="title_link"></span></a>\n';
 	}
-  banner_code +='<span style="font-family:Verdana, Arial, Helvetica, sans-serif;"><#General_x_FirmwareVersion_itemname#></sapn><a href="/Advanced_FirmwareUpgrade_Content.asp" style="color:white;"><span id="firmver" class="title_link"></span></a> <small>(Merlin build)</small>\n';
+	banner_code +='<span style="font-family:Verdana, Arial, Helvetica, sans-serif;"><#General_x_FirmwareVersion_itemname#></sapn><a href="/Advanced_FirmwareUpgrade_Content.asp" style="color:white;"><span id="firmver" class="title_link"></span></a> <small>(Merlin build)</small>\n';
 	banner_code +='<span style="font-family:Verdana, Arial, Helvetica, sans-serif;" id="ssidTitle">SSID:</sapn>';
 	banner_code +='<span onclick="change_wl_unit_status(0)" id="elliptic_ssid_2g" class="title_link"></span>';
 	banner_code +='<span onclick="change_wl_unit_status(1)" id="elliptic_ssid_5g" style="margin-left:-5px;" class="title_link"></span>\n';
-  banner_code +='</td>\n';
+	banner_code +='</td>\n';
 
 //	if(wifi_hw_sw_support != -1)
-	banner_code +='<td width="30"><div id="wifi_hw_sw_status"></div></td>\n';
+		banner_code +='<td width="30"><div id="wifi_hw_sw_status"></div></td>\n';
 
 	if(cooler_support != -1)
-  	banner_code +='<td width="30"><div id="cooler_status"" style="display:none;"></div></td>\n';
+		banner_code +='<td width="30"><div id="cooler_status"" style="display:none;"></div></td>\n';
 
 	if(multissid_support != -1)
-  	banner_code +='<td width="30"><div id="guestnetwork_status""></div></td>\n';
+		banner_code +='<td width="30"><div id="guestnetwork_status""></div></td>\n';
 
 	if(sw_mode != 3)
 	  banner_code +='<td width="30"><div id="connect_status""></div></td>\n';
 
 	if(usb_support != -1)
-  	banner_code +='<td width="30"><div id="usb_status"></div></td>\n';
+		banner_code +='<td width="30"><div id="usb_status"></div></td>\n';
 	
 	if(printer_support != -1)
 	  banner_code +='<td width="30"><div id="printer_status"></div></td>\n';
 
-  banner_code +='<td width="17"></td>\n';
-  banner_code +='</tr></tbody></table></td></tr></table>\n';
+	banner_code +='<td width="17"></td>\n';
+	banner_code +='</tr></tbody></table></td></tr></table>\n';
 
 	$("TopBanner").innerHTML = banner_code;
 
@@ -136,7 +137,7 @@ var tabtitle = new Array();
 tabtitle[0] = new Array("", "<#menu5_1_1#>", "<#menu5_1_2#>", "<#menu5_1_3#>", "<#menu5_1_4#>", "<#menu5_1_5#>", "<#menu5_1_6#>");
 tabtitle[1] = new Array("", "<#menu5_2_1#>", "<#menu5_2_2#>", "<#menu5_2_3#>", "IPTV", "Switch Control");
 tabtitle[2] = new Array("", "<#menu5_3_1#>", "Dual WAN", "<#menu5_3_3#>", "<#menu5_3_4#>", "<#menu5_3_5#>", "<#menu5_3_6#>", "<#NAT_passthrough_itemname#>", "<#menu5_4_4#>");
-tabtitle[3] = new Array("", "<#UPnPMediaServer#>", "<#menu5_4_1#>", "<#menu5_4_2#>", "<#menu5_4_3#>");
+tabtitle[3] = new Array("", "<#UPnPMediaServer#>", "<#menu5_4_1#>", "NFS Exports" , "<#menu5_4_2#>", "<#menu5_4_3#>");
 tabtitle[4] = new Array("", "IPv6");
 tabtitle[5] = new Array("", "<#BOP_isp_heart_item#>", "<#vpn_Adv#>", "OpenVPN Server Settings", "OpenVPN Client Settings", "OpenVPN Keys", "VPN Status");
 tabtitle[6] = new Array("", "<#menu5_1_1#>", "<#menu5_5_2#>", "<#menu5_5_5#>", "<#menu5_5_3#>", "<#menu5_5_4#>");
@@ -149,13 +150,13 @@ var tablink = new Array();
 tablink[0] = new Array("", "Advanced_Wireless_Content.asp", "Advanced_WWPS_Content.asp", "Advanced_WMode_Content.asp", "Advanced_ACL_Content.asp", "Advanced_WSecurity_Content.asp", "Advanced_WAdvanced_Content.asp");
 tablink[1] = new Array("", "Advanced_LAN_Content.asp", "Advanced_DHCP_Content.asp", "Advanced_GWStaticRoute_Content.asp", "Advanced_IPTV_Content.asp", "Advanced_SwitchCtrl_Content.asp");
 tablink[2] = new Array("", "Advanced_WAN_Content.asp", "Advanced_WANPort_Content.asp", "Advanced_PortTrigger_Content.asp", "Advanced_VirtualServer_Content.asp", "Advanced_Exposed_Content.asp", "Advanced_ASUSDDNS_Content.asp", "Advanced_NATPassThrough_Content.asp", "Advanced_Modem_Content.asp");
-tablink[3] = new Array("", "mediaserver.asp", "Advanced_AiDisk_samba.asp", "Advanced_AiDisk_ftp.asp", "Advanced_AiDisk_others.asp");
+tablink[3] = new Array("", "mediaserver.asp", "Advanced_AiDisk_samba.asp", "Advanced_AiDisk_NFS.asp", "Advanced_AiDisk_ftp.asp", "Advanced_AiDisk_others.asp");
 tablink[4] = new Array("", "Advanced_IPv6_Content.asp");
 tablink[5] = new Array("", "Advanced_PPTP_Content.asp", "Advanced_PPTPAdvanced_Content.asp", "Advanced_OpenVPNServer_Content.asp", "Advanced_OpenVPNClient_Content.asp", "Advanced_OpenVPN_Keys.asp", "Advanced_VPNStatus.asp");
 tablink[6] = new Array("", "Advanced_BasicFirewall_Content.asp", "Advanced_URLFilter_Content.asp", "Advanced_KeywordFilter_Content.asp","Advanced_MACFilter_Content.asp", "Advanced_Firewall_Content.asp");
 tablink[7] = new Array("", "Advanced_OperationMode_Content.asp", "Advanced_System_Content.asp", "Advanced_FirmwareUpgrade_Content.asp", "Advanced_SettingBackup_Content.asp", "Advanced_PerformanceTuning_Content.asp", "Advanced_ADSL_Content.asp");
 tablink[8] = new Array("", "Main_LogStatus_Content.asp", "Main_DHCPStatus_Content.asp", "Main_WStatus_Content.asp", "Main_IPTStatus_Content.asp", "Main_RouteStatus_Content.asp", "Main_AdslStatus_Content.asp", "Main_ConnStatus_Content.asp");
-tablink[9] = new Array("", "QoS_EZQoS.asp", "Main_TrafficMonitor_realtime.asp", "Main_TrafficMonitor_last24.asp", "Main_TrafficMonitor_daily.asp", "Advanced_QOSUserPrio_Content.asp", "Advanced_QOSUserRules_Content.asp");
+tablink[9] = new Array("", "QoS_EZQoS.asp", "Main_TrafficMonitor_realtime.asp", "Main_TrafficMonitor_last24.asp", "Main_TrafficMonitor_daily.asp", "Main_TrafficMonitor_monthly.asp", "Main_TrafficMonitor_devrealtime.asp", "Main_TrafficMonitor_devdaily.asp", "Main_TrafficMonitor_devmonthly.asp", "Advanced_QOSUserPrio_Content.asp", "Advanced_QOSUserRules_Content.asp");
 tablink[10] = new Array("", "Tools_Sysinfo.asp", "Tools_WOL.asp", "Tools_OtherSettings.asp", "Tools_RunCmd.asp");
 
 //Level 2 Menu
@@ -205,8 +206,10 @@ var media_support = rc_support.search("media");
 var cloudsync_support = rc_support.search("cloudsync");
 var modem_support = rc_support.search("modem"); 
 var IPv6_support = rc_support.search("ipv6"); 
-var ParentalCtrl_support = rc_support.search("PARENTAL"); 
-var ParentalCtrl2_support = rc_support.search("PARENTAL2"); 
+
+var ParentalCtrl2_support = rc_support.search("PARENTAL2");
+var ParentalCtrl_support = rc_support.search("PARENTAL "); 
+
 var pptpd_support = rc_support.search("pptpd"); 
 var openvpnd_support = rc_support.search("openvpnd"); 
 var dualWAN_support = rc_support.search("dualwan"); 
@@ -214,10 +217,9 @@ var WebDav_support = rc_support.search("webdav");
 var HTTPS_support = rc_support.search("HTTPS"); 
 var nodm_support = rc_support.search("nodm"); 
 var wimax_support = rc_support.search("wimax");
+var downsize_support = rc_support.search("sfp4m");
 
-var downsize_support = -1;
-if(productid == "RT-N10D")
-	downsize_support = 1;
+var nfsd_support = rc_support.search("nfsd");
 
 var calculate_height = menuL1_link.length+tablink.length-1;
 
@@ -370,7 +372,7 @@ function remove_url(){
 		menuL1_link[4]="";
 	}
 
-	if(ParentalCtrl_support == -1)
+	if((ParentalCtrl_support == -1) || (ParentalCtrl2_support != -1))
 		remove_menu_item(6, "Advanced_MACFilter_Content.asp");
 
 	if(IPv6_support == -1){
@@ -403,13 +405,17 @@ function remove_url(){
 		remove_menu_item(5,"Advanced_VPNStatus.asp");
 	}
 
+	if(nfsd_support == -1){
+		remove_menu_item(3,"Advanced_AiDisk_NFS.asp")
+	}
+
 	if(SwitchCtrl_support == -1){
 		remove_menu_item(1, "Advanced_SwitchCtrl_Content.asp");		
 	}
 
-        if(repeater_support != -1){
-                remove_menu_item(0, "Advanced_WMode_Content.asp");
-        }
+  if(repeater_support != -1 && psta_support == -1){
+    remove_menu_item(0, "Advanced_WMode_Content.asp");
+  }
 }
 
 function remove_menu_item(L2, remove_url){
@@ -534,7 +540,7 @@ function show_menu(){
 	}else if(sw_mode == 3){
 		menu1_code += '<div class="m_qis_r" style="margin-top:-170px;cursor:pointer;" onclick="go_setting(\'QIS_wizard.htm?flag=lanip\');"><table><tr><td><div id="index_img0"></div></td><td><div><#QIS#></div></td></tr></table></div>\n'; 	
 	}else{
-		menu1_code += '<div class="m_qis_r" style="margin-top:-170px;cursor:pointer;" onclick="go_setting(\'QIS_wizard.htm\');"><table><tr><td><div id="index_img0"></div></td><td><div><#QIS#></div></td></tr></table></div>\n';
+		menu1_code += '<div class="m_qis_r" style="margin-top:-170px;cursor:pointer;" onclick="go_setting(\'QIS_wizard.htm?flag=detect\');"><table><tr><td><div id="index_img0"></div></td><td><div><#QIS#></div></td></tr></table></div>\n';
 	}	
 
 	// Feature
@@ -604,7 +610,10 @@ function show_menu(){
 		$("tabMenu").innerHTML = tab_code;
 	}
 
-	setTimeout('cal_height();', 1);
+	if(current_url == "index.asp" || current_url == "")
+		cal_height();
+	else
+		setTimeout('cal_height();', 1);
 }
 
 function addOnlineHelp(obj, keywordArray){
@@ -806,19 +815,12 @@ function cal_height(){
 		$("AiDiskFormTitle").style.height = table_height + "px";
 		tableClientHeight = $("AiDiskFormTitle").clientHeight;
 	}
-	// mediaserver.asp
-	else if($("upnp_table")){
-		if(table_height < 780)
-			table_height = 780;
-		$("upnp_table").style.height = table_height + "px";
-		tableClientHeight = $("upnp_table").clientHeight;
-	}
 	// APP Install
 	else if($("applist_table")){
-		if(sw_mode == 2)
-				table_height = table_height + 90;
+		if(sw_mode == 2 || sw_mode == 3)
+				table_height = table_height + 120;				
 		else
-				table_height = table_height + 2;
+				table_height = table_height + 40;	//2
 		$("applist_table").style.height = table_height + "px";		
 		tableClientHeight = $("applist_table").clientHeight;
 		
@@ -856,10 +858,28 @@ function show_footer(){
 	footer_code += '<div style="margin-top:-75px;margin-left:205px;"><table width="765px" border="0" align="center" cellpadding="0" cellspacing="0"><tr>';
 	footer_code += '<td width="20" align="right"><div id="bottom_help_icon" style="margin-right:3px;"></div></td><td width="100" id="bottom_help_title" align="left">Help & Support</td>';
 
-	if("<#Web_Title2#>" == "RT-N66U")
+	if(hw_ver.search("RTN12") != -1){	//MODELDEP : RT-N12
+		if( hw_ver.search("RTN12HP") != -1){	//RT-N12HP
+				footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12HP" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12HP" target="_blank">Utility</a></td>';
+		}else if(hw_ver.search("RTN12B1") != -1){ //RT-N12B1
+				footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.B1)" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.B1)" target="_blank">Utility</a></td>';
+		}else if(hw_ver.search("RTN12C1") != -1){ //RT-N12C1
+				footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.C1)" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.C1)" target="_blank">Utility</a></td>';
+		}else if(hw_ver.search("RTN12D1") != -1){ //RT-N12D1
+				footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.D1)" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N12%20(VER.D1)" target="_blank">Utility</a></td>';
+		}else{	//RT-N12
+				footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Utility</a></td>';
+		}
+	}
+	else	if("<#Web_Title2#>" == "RT-N66U"){	//MODELDEP : RT-N66U
 		footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N66U%20(VER.B1)" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=RT-N66U%20(VER.B1)" target="_blank">Utility</a></td>';
-	else
-		footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Utility</a></td>';
+	}
+	else if("<#Web_Title2#>" == "DSL-N55U-B"){	//MODELDEP : DSL-N55U-B
+		footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=DSL-N55U%20(VER.B1)" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="http://support.asus.com/download.aspx?SLanguage=en&m=DSL-N55U%20(VER.B1)" target="_blank">Utility</a></td>';
+	}
+	else{
+		footer_code += '<td width="200" id="bottom_help_link" align="left">&nbsp&nbsp<a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Manual</a> | <a style="font-weight: bolder;text-decoration:underline;cursor:pointer;" href="<#bottom_Link#>" target="_blank">Utility</a></td>';	
+	}			
 
 	footer_code += '<td width="390" id="bottom_help_FAQ" align="right" style="font-family:Arial, Helvetica, sans-serif;">FAQ&nbsp&nbsp<input type="text" id="FAQ_input" name="FAQ_input" class="input_FAQ_table" maxlength="40"></td>';
 	footer_code += '<td width="30" align="left"><div id="bottom_help_FAQ_icon" class="bottom_help_FAQ_icon" style="cursor:pointer;margin-left:3px;" target="_blank" onClick="search_supportsite();"></div></td>';
@@ -875,21 +895,23 @@ function search_supportsite(obj){
 		EN : "en",
 		TW : "zh-tw",
 		CN : "zh-cn",
+		BR : "en",		
 		CZ : "en",
-		PL : "en",
-		RU : "en",
-		DE : "en",
+		DA : "en",
+		DE : "en",		
+		ES : "es-es",
+		FI : "en",
 		FR : "fr-fr",
-		TR : "en",
-		TH : "en",
+		IT : "en",
+		JP : "en",				
 		MS : "en",
 		NO : "en",
-		FI : "en",
-		DA : "en",
+		PL : "en",
+		RU : "en",
 		SV : "en",
-		BR : "en",
-		JP : "en",
-		ES : "es-es"
+		TH : "en",
+		TR : "en",		
+		UK : "en"
 	}	
 	
 		var keywordArray = $("FAQ_input").value.split(" ");
@@ -959,6 +981,10 @@ function show_top_status(){
 			else
 				$("elliptic_ssid_5g").style.display = "none";
 		}
+		$('elliptic_ssid_2g').style.textDecoration="none";
+		$('elliptic_ssid_2g').style.cursor="auto";
+		$('elliptic_ssid_5g').style.textDecoration="none";
+		$('elliptic_ssid_5g').style.cursor="auto";
 	}
 	
 	if(band5g_support == -1){
@@ -967,7 +993,7 @@ function show_top_status(){
 			ssid_status_2g = ssid_status_2g.substring(0,20) + "...";
 			$("elliptic_ssid_2g").onmouseover = function(){
 				if(sw_mode == 2 && '<% nvram_get("wlc_band"); %>' == 0)
-					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wlc_ure_ssid"); %>'));
+					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl0.1_ssid"); %>'));
 				else
 					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl0_ssid"); %>'));
 			};
@@ -981,7 +1007,7 @@ function show_top_status(){
 			ssid_status_2g = ssid_status_2g.substring(0,10) + "...";
 			$("elliptic_ssid_2g").onmouseover = function(){
 				if(sw_mode == 2 && '<% nvram_get("wlc_band"); %>' == 0)
-					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wlc_ure_ssid"); %>'));
+					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl0.1_ssid"); %>'));
 				else
 					return overlib('<p style="font-weight:bold;">2.4GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl0_ssid"); %>'));
 			};
@@ -994,7 +1020,7 @@ function show_top_status(){
 			ssid_status_5g = ssid_status_5g.substring(0,10) + "...";
 			$("elliptic_ssid_5g").onmouseover = function(){
 				if(sw_mode == 2 && '<% nvram_get("wlc_band"); %>' == 1)
-					return overlib('<p style="font-weight:bold;">5GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wlc_ure_ssid"); %>'));
+					return overlib('<p style="font-weight:bold;">5GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl1.1_ssid"); %>'));
 				else
 					return overlib('<p style="font-weight:bold;">5GHz SSID:</p>'+decodeURIComponent('<% nvram_char_to_ascii("WLANConfig11b", "wl1_ssid"); %>'));
 			};
@@ -1096,8 +1122,48 @@ function show_selected_language(){
 			$('selected_lang').innerHTML = "繁體中文";
 			break;
 		}
+		case 'BR':{
+			$('selected_lang').innerHTML = "Brazil";
+			break;
+		}
 		case 'CZ':{
 			$('selected_lang').innerHTML = "Česky";
+			break;
+		}
+		case 'DA':{
+			$('selected_lang').innerHTML = "Dansk";
+			break;
+		}	
+		case 'DE':{
+			$('selected_lang').innerHTML = "Deutsch";
+			break;
+		}
+		case 'ES':{
+			$('selected_lang').innerHTML = "Español";
+			break;
+		}
+		case 'FI':{
+			$('selected_lang').innerHTML = "Finsk";
+			break;
+		}
+		case 'FR':{
+			$('selected_lang').innerHTML = "Français";
+			break;
+		}
+		case 'IT':{
+			$('selected_lang').innerHTML = "Italiano";
+			break;
+		}		
+		case 'JP':{
+			$('selected_lang').innerHTML = "日本語";
+			break;
+		}
+		case 'MS':{
+			$('selected_lang').innerHTML = "Malay";
+			break;
+		}
+		case 'NO':{
+			$('selected_lang').innerHTML = "Norsk";
 			break;
 		}
 		case 'PL':{
@@ -1107,57 +1173,26 @@ function show_selected_language(){
 		case 'RU':{
 			$('selected_lang').innerHTML = "Pусский";
 			break;
-		}	
-		case 'DE':{
-			$('selected_lang').innerHTML = "Deutsch";
-			break;
 		}
-		case 'FR':{
-			$('selected_lang').innerHTML = "Français";
-			break;
-		}
-		case 'TR':{
-			$('selected_lang').innerHTML = "Türkçe";
-			break;
-		}
-		case 'TH':{
-			$('selected_lang').innerHTML = "ไทย";
-			break;
-		}	
-		case 'MS':{
-			$('selected_lang').innerHTML = "Malay";
-			break;
-		}
-		case 'NO':{
-			$('selected_lang').innerHTML = "Norsk";
-			break;
-		}
-		case 'FI':{
-			$('selected_lang').innerHTML = "Finsk";
-			break;
-		}
-		case 'DA':{
-			$('selected_lang').innerHTML = "Dansk";
-			break;
-		}	
 		case 'SV':{
 			$('selected_lang').innerHTML = "Svensk";
 			break;
-		}
-		case 'BR':{
-			$('selected_lang').innerHTML = "Brazil";
+		}		
+		case 'TH':{
+			$('selected_lang').innerHTML = "ไทย";
 			break;
-		}
-		case 'JP':{
-			$('selected_lang').innerHTML = "日本語";
+		}			
+		case 'TR':{
+			$('selected_lang').innerHTML = "Türkçe";
 			break;
-		}
-		case 'ES':{
-			$('selected_lang').innerHTML = "Español";
+		}	
+		case 'UK':{
+			$('selected_lang').innerHTML = "Ukrainian";
 			break;
-		}
+		}		
 	}
 }
+
 
 function submit_language(obj){
 	//if($("select_lang").value != $("preferred_lang").value){
@@ -1365,6 +1400,25 @@ function is_string(o, event){
 	}	
 }
 
+function is_alphanum(o, event){
+
+	if (event.which == null)
+		keyPressed = event.keyCode;	// IE
+	 else if (event.which != 0 && event.charCode != 0)
+		keyPressed = event.which	// All others
+	else
+		return true;			// Special key
+
+	if ((keyPressed>=48&&keyPressed<=57) ||	//0-9
+	   (keyPressed>=97&&keyPressed<=122) ||	//little EN
+	   (keyPressed>=65&&keyPressed<=90) ||	//Large EN
+	   (keyPressed==45) ||			//-
+	   (keyPressed==46) ||			//.
+	   (keyPressed==32)) return true;	//space
+
+	return false;
+}
+
 function validate_string(string_obj, flag){
 	if(string_obj.value.charAt(0) == '"'){
 		if(flag != "noalert")
@@ -1543,6 +1597,7 @@ function validate_account(string_obj, flag){
 				||  string_obj.value.charAt(i) == '<'
 				||  string_obj.value.charAt(i) == '>'
 				||  string_obj.value.charAt(i) == '@'
+				||  string_obj.value.charAt(i) == ' '
 				){
 			invalid_char = invalid_char+string_obj.value.charAt(i);
 		}
@@ -1829,6 +1884,10 @@ var usb_path1;
 var usb_path2;
 var usb_path1_tmp = "init";
 var usb_path2_tmp = "init";
+var usb_path1_removed;
+var usb_path2_removed;
+var usb_path1_removed_tmp = "init";
+var usb_path2_removed_tmp = "init";
 
 function refresh_info_status(xmldoc)
 {
@@ -1844,6 +1903,8 @@ function refresh_info_status(xmldoc)
 	_wlc_state = wanStatus[7].firstChild.nodeValue;	
 	_wlc_sbstate = wanStatus[8].firstChild.nodeValue;	
 	wifi_hw_switch = wanStatus[9].firstChild.nodeValue;
+	usb_path1_removed = wanStatus[11].firstChild.nodeValue;	
+	usb_path2_removed = wanStatus[12].firstChild.nodeValue;
 
 	if(location.pathname == "/QIS_wizard.htm")
 		return false;	
@@ -1895,7 +1956,7 @@ function refresh_info_status(xmldoc)
 	}
 
 	// wifi hw sw status
-//	if(wifi_hw_sw_support != -1){
+	if(wifi_hw_sw_support != -1){
 		if(wifi_hw_switch == "wifi_hw_switch=0"){
 			$("wifi_hw_sw_status").className = "wifihwswstatusoff";
 			$("wifi_hw_sw_status").onclick = function(){}
@@ -1906,35 +1967,58 @@ function refresh_info_status(xmldoc)
 				}
 		$("wifi_hw_sw_status").onmouseover = function(){overHint(8);}
 		$("wifi_hw_sw_status").onmouseout = function(){nd();}
-//	}	
+	}	
+	else	// No HW switch - reflect actual radio states
+	{
+		<%radio_status();%>
+
+		if (band5g_support == -1)
+			radio_5 = 1;
+
+		if (radio_2 && radio_5)
+		{
+			$("wifi_hw_sw_status").className = "wifihwswstatuson";
+			$("wifi_hw_sw_status").onclick = function(){}
+		}
+		else if (radio_2 || radio_5)
+		{
+			$("wifi_hw_sw_status").className = "wifihwswstatuspartial";  
+			$("wifi_hw_sw_status").onclick = function(){}
+		}
+		else
+		{
+			$("wifi_hw_sw_status").className = "wifihwswstatusoff"; 
+			$("wifi_hw_sw_status").onclick = function(){}
+		}
+		$("wifi_hw_sw_status").onmouseover = function(){overHint(8);}
+		$("wifi_hw_sw_status").onmouseout = function(){nd();}
+	}
 
 	// usb
 	if(usb_support != -1){
-		if(foreign_disk_total_mounted_number().length == 0){
-			if(usb_path1 == "usb=storage")
-				usb_path1 = "usb=";
-			if(usb_path2 == "usb=storage")
-				usb_path2 = "usb=";
-		}
-		else{
-			var mountNum = 0;
-			for(var i=0; i<foreign_disk_total_mounted_number().length; i++){
-				if(foreign_disk_total_mounted_number()[i] != 0)
-					mountNum++;
-					break;
+		if(current_url=="index.asp"||current_url==""){
+			if((usb_path1_removed != usb_path1_removed_tmp && usb_path1_removed_tmp != "init")){
+				location.href = "/index.asp";
 			}
-			if(mountNum == 0){
-				if(usb_path1 == "usb=storage")
-					usb_path1 = "usb=";
-				if(usb_path1 == "usb=storage")
-					usb_path2 = "usb=";
+			else if(usb_path1_removed == "umount=0"){ // umount=0->umount=0, 0->storage
+				if((usb_path1 != usb_path1_tmp && usb_path1_tmp != "init"))
+					location.href = "/index.asp";
+			}
+
+			if((usb_path2_removed != usb_path2_removed_tmp && usb_path2_removed_tmp != "init")){
+				location.href = "/index.asp";
+			}
+			else if(usb_path2_removed == "umount=0"){ // umount=0->umount=0, 0->storage
+				if((usb_path2 != usb_path2_tmp && usb_path2_tmp != "init"))
+					location.href = "/index.asp";
 			}
 		}
 
-		if((current_url=="index.asp"||current_url=="")&&
-		   ((usb_path1!=usb_path1_tmp&&usb_path1_tmp!="init")||
-		    (usb_path2!=usb_path2_tmp&&usb_path2_tmp!="init")))
-			updateUSBStatus();
+		if(usb_path1_removed == "umount=1")
+			usb_path1 = "usb=";
+
+		if(usb_path2_removed == "umount=1")
+			usb_path2 = "usb=";
 
 		if(usb_path1 == "usb=" && usb_path2 == "usb="){
 			$("usb_status").className = "usbstatusoff";
@@ -1946,8 +2030,8 @@ function refresh_info_status(xmldoc)
 				$("printer_status").onmouseout = function(){nd();}
 			}
 		}
-		else{ // !storage
-			if(usb_path1 == "usb=printer" || usb_path2 == "usb=printer"){
+		else{
+			if(usb_path1 == "usb=printer" || usb_path2 == "usb=printer"){ // printer
 				if((current_url == "index.asp" || current_url == "") && $("printerName0") == null && $("printerName1") == null)
 					updateUSBStatus();
 				if(printer_support != -1){
@@ -1961,22 +2045,27 @@ function refresh_info_status(xmldoc)
 				else
 					$("usb_status").className = "usbstatuson";
 			}
-			else{
+			else{ // !printer
 				if((current_url == "index.asp" || current_url == "") && ($("printerName0") != null || $("printerName1") != null))
-					updateUSBStatus();
+					location.href = "/index.asp";
+
 				if(printer_support != -1){
 					$("printer_status").className = "printstatusoff";
 					$("printer_status").onmouseover = function(){overHint(5);}
 					$("printer_status").onmouseout = function(){nd();}
 				}
+
 				$("usb_status").className = "usbstatuson";
 			}
 			$("usb_status").onclick = function(){openHint(24,2);}
 		}
 		$("usb_status").onmouseover = function(){overHint(2);}
 		$("usb_status").onmouseout = function(){nd();}
+
 		usb_path1_tmp = usb_path1;
 		usb_path2_tmp = usb_path2;
+		usb_path1_removed_tmp = usb_path1_removed;
+		usb_path2_removed_tmp = usb_path2_removed;
 	}
 
 	// guest network
@@ -2193,4 +2282,21 @@ function autoFocus(str){
 			}
 		}
 	}
+}
+
+function charToAscii(str){
+	var retAscii = "";
+	for(var i = 0; i < str.length; i++){
+		retAscii += "%";
+		retAscii += str.charCodeAt(i).toString(16).toUpperCase();
+	}
+	return retAscii;
+}
+
+function set_variable(_variable, _val){
+	var NewInput = document.createElement("input");
+	NewInput.type = "hidden";
+	NewInput.name = _variable;
+	NewInput.value = _val;
+	document.form.appendChild(NewInput);
 }

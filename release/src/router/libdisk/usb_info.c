@@ -55,6 +55,88 @@ extern int get_device_type_by_device(const char *device_name){
 	return DEVICE_TYPE_UNKNOWN;
 }
 
+extern char *get_device_type_by_node(const char *usb_node, char *buf, const int buf_size){
+	int interface_num, interface_count;
+	char interface_name[16];
+#ifdef RTCONFIG_USB_PRINTER
+	int got_printer = 0;
+#endif
+#ifdef RTCONFIG_USB_MODEM
+	int got_modem = 0;
+#endif
+#ifdef RTCONFIG_USB
+	int got_disk = 0;
+#endif
+	int got_others = 0;
+
+	interface_num = get_usb_interface_number(usb_node);
+	if(interface_num <= 0)
+		return NULL;
+
+	for(interface_count = 0; interface_count < interface_num; ++interface_count){
+		memset(interface_name, 0, sizeof(interface_name));
+		sprintf(interface_name, "%s:1.%d", usb_node, interface_count);
+
+#ifdef RTCONFIG_USB_PRINTER
+		if(isPrinterInterface(interface_name))
+			++got_printer;
+		else
+#endif
+#ifdef RTCONFIG_USB_MODEM
+		if(isSerialInterface(interface_name) || isACMInterface(interface_name))
+			++got_modem;
+		else
+#endif
+#ifdef RTCONFIG_USB
+		if(isStorageInterface(interface_name))
+			++got_disk;
+		else
+#endif
+			++got_others;
+	}
+
+	if(
+#ifdef RTCONFIG_USB_PRINTER
+			!got_printer
+#else
+			1
+#endif
+			&&
+#ifdef RTCONFIG_USB_MODEM
+			!got_modem
+#else
+			1
+#endif
+			&&
+#ifdef RTCONFIG_USB
+			!got_disk
+#else
+			1
+#endif
+			)
+		return NULL;
+
+	memset(buf, 0, buf_size);
+#ifdef RTCONFIG_USB_PRINTER
+	if(got_printer > 0) // Top priority
+		strcpy(buf, "printer");
+	else
+#endif
+#ifdef RTCONFIG_USB_MODEM
+	if(got_modem > 0) // 2nd priority
+		strcpy(buf, "modem");
+	else
+#endif
+#ifdef RTCONFIG_USB
+	if(got_disk > 0)
+		strcpy(buf, "storage");
+	else
+#endif
+		return NULL;
+
+	return buf;
+}
+
 extern char *get_usb_node_by_string(const char *target_string, char *ret, const int ret_size){
 	char usb_port[8], buf[16];
 	char *ptr, *ptr_end;
@@ -759,8 +841,31 @@ extern int hadACMModule(){
 		return 0;
 }
 
+// return 1 when there is a bound device.
+extern int hadRNDISModule(){
+	DIR *module_dir;
+	struct dirent *file;
+	char buf[32];
+
+	if((module_dir = opendir(SYS_RNDIS_PATH)) == NULL)
+		return 0;
+
+	while((file = readdir(module_dir)) != NULL){
+		if(!strcmp(file->d_name, ".") || !strcmp(file->d_name, ".."))
+			continue;
+
+		if(get_interface_by_string(file->d_name, buf, 32)){
+			closedir(module_dir);
+			return 1;
+		}
+	}
+	closedir(module_dir);
+
+	return 0;
+}
+
 #ifdef RTCONFIG_USB_BECEEM
-extern int hadBeceemModule(){
+int hadBeceemModule(void){
 	char target_file[128];
 	DIR *module_dir;
 
@@ -773,30 +878,50 @@ extern int hadBeceemModule(){
 	else
 		return 0;
 }
+
+int hadGCTModule(void){
+	char target_file[128];
+	DIR *module_dir;
+
+	memset(target_file, 0, 128);
+	sprintf(target_file, "%s/tun", SYS_MODULE);
+	if((module_dir = opendir(target_file)) != NULL){
+		closedir(module_dir);
+		return 1;
+	}
+	else
+		return 0;
+}
 #endif
 
-extern int isSerialNode(const char *device_name){
+int isSerialNode(const char *device_name)
+{
 	if(strstr(device_name, "ttyUSB") == NULL)
 		return 0;
 
 	return 1;
 }
 
-extern int isACMNode(const char *device_name){
+int isACMNode(const char *device_name)
+{
 	if(strstr(device_name, "ttyACM") == NULL)
 		return 0;
 
 	return 1;
 }
 
-extern int isBeceemNode(const char *device_name){
+#ifdef RTCONFIG_USB_BECEEM
+int isBeceemNode(const char *device_name)
+{
 	if(strstr(device_name, "usbbcm") == NULL)
 		return 0;
 
 	return 1;
 }
+#endif
 
-extern int isSerialInterface(const char *interface_name){
+int isSerialInterface(const char *interface_name)
+{
 	char interface_class[4];
 
 	if(get_usb_interface_class(interface_name, interface_class, 4) == NULL)
@@ -808,7 +933,8 @@ extern int isSerialInterface(const char *interface_name){
 	return 1;
 }
 
-extern int isACMInterface(const char *interface_name){
+int isACMInterface(const char *interface_name)
+{
 	char interface_class[4];
 
 	if(get_usb_interface_class(interface_name, interface_class, 4) == NULL)
@@ -820,7 +946,44 @@ extern int isACMInterface(const char *interface_name){
 	return 1;
 }
 
-extern int is_usb_modem_ready(){
+int isRNDISInterface(const char *interface_name)
+{
+	char interface_class[4];
+	char target_file[128];
+	DIR *module_dir;
+
+	if(get_usb_interface_class(interface_name, interface_class, 4) == NULL)
+		return 0;
+
+	if(strcmp(interface_class, "02") && strcmp(interface_class, "e0"))
+		return 0;
+
+	memset(target_file, 0, 128);
+	sprintf(target_file, "%s/%s", SYS_RNDIS_PATH, interface_name);
+	if((module_dir = opendir(target_file)) == NULL)
+		return 0;
+
+	closedir(module_dir);
+
+	return 1;
+}
+
+#ifdef RTCONFIG_USB_BECEEM
+int isGCTInterface(const char *interface_name){
+	char interface_class[4];
+
+	if(get_usb_interface_class(interface_name, interface_class, 4) == NULL)
+		return 0;
+
+	if(strcmp(interface_class, "0a"))
+		return 0;
+
+	return 1;
+}
+#endif
+
+int is_usb_modem_ready(void)
+{
 	if(nvram_invmatch("modem_enable", "0")
 			&& ((!strcmp(nvram_safe_get("usb_path1"), "modem") && strcmp(nvram_safe_get("usb_path1_act"), ""))
 					|| (!strcmp(nvram_safe_get("usb_path2"), "modem") && strcmp(nvram_safe_get("usb_path2_act"), ""))

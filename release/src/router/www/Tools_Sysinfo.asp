@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -16,15 +16,66 @@
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
-<script type="text/javascript" language="JavaScript" src="/detect.js"></script>
+<script language="JavaScript" type="text/javascript" src="/detect.js"></script>
+<script language="JavaScript" type="text/javascript" src="/tmhist.js"></script>
+<script language="JavaScript" type="text/javascript" src="tmmenu.js"></script>
+<script language="JavaScript" type="text/javascript" src="/nameresolv.js"></script>
+<script language="JavaScript" type="text/javascript" src="/jquery.js"></script>
 <script>
+
 wan_route_x = '<% nvram_get("wan_route_x"); %>';
 wan_nat_x = '<% nvram_get("wan_nat_x"); %>';
 wan_proto = '<% nvram_get("wan_proto"); %>';
 
+hwacc = "<% nvram_get("ctf_disable"); %>";
+hwacc_force = "<% nvram_get("ctf_disable_force"); %>";
+arplist = [<% get_arp_table(); %>];
+etherstate = "<% sysinfo("ethernet"); %>";
+
+var $j = jQuery.noConflict();
+
 function initial(){
 	show_menu();
+        if (!rc_support.search("5G")) $("wifi5_clients_tr").style.display = "none";
 	showbootTime();
+	update_temperatures();
+	hwaccel_state();
+	show_etherstate();
+}
+
+function update_temperatures(){
+	$j.ajax({
+		url: '/ajax_coretmp.asp',
+		dataType: 'script',
+		error: function(xhr){
+			update_temperatures();
+		},
+		success: function(response){
+			code = "<b>2.4 GHz:</b><span> " + curr_coreTmp_2_raw + "</span>";
+			if (rc_support.search("5G")) {
+				code += "&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span>" + curr_coreTmp_5_raw + "</span>";
+			}
+			$("temp_td").innerHTML = code;
+			setTimeout("update_temperatures();", 3000);
+		}
+	});
+}
+
+
+function hwaccel_state(){
+	if (hwacc == "1") {
+		code = "<span>Disabled</span>";
+		if (hwacc_force == "1")
+			code += " <i>(by user)</i>";
+		else
+			code += " <i>(incompatible feature enabled)</i>";
+	} else if (hwacc == "0") {
+		code = "<span>Enabled</span>";
+	} else {
+		code = "<span>N/A</span>";
+	}
+
+	$("hwaccel").innerHTML = code;
 }
 
 
@@ -40,6 +91,64 @@ function showbootTime(){
         $("boot_seconds").innerHTML = Seconds;
         boottime += 1;
         setTimeout("showbootTime()", 1000);
+}
+
+function show_etherstate(){
+	var state, state2;
+	var hostname, devicename, overlib_str, port;
+	var tmpPort;
+	var code = '<table cellpadding="0" cellspacing="0" width="100%"><tr><th>Port</th><th>Link State</th><th>Last Device Seen</th></tr>';
+
+	var t = etherstate.split('>');
+
+	for (var i = 0; i < t.length; ++i) {
+		var line = t[i].split(/[\s]+/);
+		if (line[0] == "Port") {
+			if (line[2] == "DOWN")
+				state2 = "Down";
+			else {
+				state = line[2].replace("FD"," Full Duplex");
+				state2 = state.replace("HD"," Half Duplex");
+			}
+
+			hostname = "";
+
+			if (line[11] == "00:00:00:00:00:00") {
+				devicename = '<span class="ClientName">&lt;none&gt;</span>';
+			} else {
+				overlib_str = "<p><#MAC_Address#></p>" + line[11];
+
+				// Retrieve through lease list, else walk down arp cache and retrieve from hostname cache
+				for (var j = 0; j < arplist.length; ++j) {
+					if (arplist[j][3] == line[11].toUpperCase()) {
+						hostname = hostnamecache[arplist[j][0]];
+						break;
+					}
+				}
+
+//				if (hostname == "") hostname = retHostName(line[11]);
+
+				if (hostname != "") {
+					devicename = '<span class="ClientName" onmouseover="return overlib(\''+overlib_str +'\');" onmouseout="nd();">'+ hostname +'</span>';
+				} else {
+					devicename = '<span class="ClientName" onclick="getOUIFromMAC(\'' + line[11] +'\');" style="cursor:pointer; text-decoration:underline;">'+ line[11] +'</span>'; 
+				}
+			}
+			tmpPort = line[1].replace(":","");
+			if (tmpPort == "0") {
+				port = "WAN";
+			} else if (tmpPort == "8") {
+				break;
+			} else {
+				port = "LAN "+tmpPort;
+			}
+			code += '<tr><td width="15%">'+port+'</td><td width="30%"><span>' + state2 + '</span></td><td width="55%">'+ devicename +'</td></tr>';
+		}
+	}
+	code += '</table>';
+	$("etherstate_td").innerHTML = code;
+
+	if (hostnamecache['ready'] == 0) setTimeout(show_etherstate, 500);
 }
 
 </script>
@@ -97,19 +206,23 @@ function showbootTime(){
 						</tr>
 					</thead>
 					<tr>
-						<th>Model:</th>
+						<th>Model</th>
 				        	<td><% nvram_get("productid"); %></td>
 					</tr>
 					<tr>
-						<th>Firmware Build:</th>
+						<th>Firmware Build</th>
 						<td><% nvram_get("buildinfo"); %></td>
 					</tr>
+                                        <tr>
+                                                <th>Bootloader (CFE)</th>
+                                                <td><% sysinfo("cfe_version"); %></td>
+                                        </tr>
 					<tr>
-						<th>Driver version:</th>
+						<th>Driver version</th>
 						<td><% sysinfo("driver_version"); %></td>
 					</tr>
 					<tr>
-						<th>Features:</th>
+						<th>Features</th>
 						<td><% nvram_get("rc_support"); %></td>
 					</tr>
 					<tr>
@@ -119,7 +232,7 @@ function showbootTime(){
 
 					<tr>
 						<th>Radios temperature</th>
-						<td><b>2.4 GHz:</b><span> <% sysinfo("temperature.2"); %></span>&nbsp;&nbsp;-&nbsp;&nbsp;<b>5 GHz:</b> <span><% sysinfo("temperature.5"); %></span></td>
+						<td id="temp_td"></td>
 					</tr>
 				</table>
 
@@ -198,10 +311,20 @@ function showbootTime(){
                                                         <td colspan="2">Network</td>
                                                 </tr>
                                         </thead>
-                                        <tr>
-                                                <th>Connections</th>
-                                                <td><% sysinfo("conn.total"); %>&nbsp;/ <% sysinfo("conn.max"); %>&nbsp;&nbsp;-&nbsp;&nbsp;<% sysinfo("conn.active"); %> active</td>
+					<tr>
+						<th>HW acceleration</th>
+						<td id="hwaccel"></td>
 					</tr>
+					<tr>
+						<th>Connections</th>
+						<td><% sysinfo("conn.total"); %>&nbsp;/ <% sysinfo("conn.max"); %>&nbsp;&nbsp;-&nbsp;&nbsp;<% sysinfo("conn.active"); %> active</td>
+					</tr>
+
+					<tr>
+						<th>Ethernet Ports</th>
+						<td id="etherstate_td"><i><span>Querying switch...</span></i></td>
+					</tr>
+					
 					<tr>
 						<th>Wireless clients (2.4 GHz)</th>
 						<td>
@@ -210,7 +333,7 @@ function showbootTime(){
 							Authenticated: <span><% sysinfo("conn.wifi.2.authe"); %></span>
 						</td>
 					</tr>
-					<tr>
+					<tr id="wifi5_clients_tr">
 						<th>Wireless clients (5 GHz)</th>
 						<td>
 							Associated: <span><% sysinfo("conn.wifi.5.assoc"); %></span>&nbsp;&nbsp;-&nbsp;&nbsp;
